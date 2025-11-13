@@ -1,0 +1,5 @@
+invoice_id,invoice_number,client_id,client_name,client_email,client_phone,product_id,product_name,product_description,line_total,invoice_total,invoice_status,invoice_date,invoice_duedate,days_overdue,payment_method
+10815,INV-10815,111,"Diego Faria Martins",diegofaria@staff.sourei.com.br,35997132726,198,"Iniciante I","Plano de hospedagem básico",R$ 99.90,R$ 197.90,Unpaid,2025-09-17,2025-02-15,272,banktransfer
+10815,INV-10815,111,"Diego Faria Martins",diegofaria@staff.sourei.com.br,35997132726,204,"Free","Plano gratuito",R$ 0.00,R$ 197.90,Unpaid,2025-09-17,2025-02-15,272,banktransfer
+10827,INV-10827,111,"Diego Faria Martins",diegofaria@staff.sourei.com.br,35997132726,198,"Iniciante I","Plano de hospedagem básico",R$ 99.90,R$ 197.90,Unpaid,2025-09-18,2025-03-15,244,banktransfer
+10827,INV-10827,111,"Diego Faria Martins",diegofaria@staff.sourei.com.br,35997132726,204,"Free","Plano gratuito",R$ 0.00,R$ 197.90,Unpaid,2025-09-18,2025-03-15,244,banktransfer

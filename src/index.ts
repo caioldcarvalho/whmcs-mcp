@@ -585,6 +585,30 @@ const tools: Tool[] = [
       required: ['clientid'],
     },
   },
+  // Custom Combined Tools
+  {
+    name: 'whmcs_get_unpaid_invoices_detailed',
+    description: 'Get all unpaid and overdue invoices with detailed information including client name, email, phone number, associated products, and invoice details. This tool automatically fetches and combines data from multiple API endpoints.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
+    name: 'whmcs_get_all_unpaid_invoices_complete',
+    description: 'Detectar TODAS as faturas não pagas com informações completas: cliente, fatura, produto específico de cada item da fatura, valor e telefone. Lista faturas não pagas e em atraso com detalhes completos dos produtos faturados.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        limit: {
+          type: 'number',
+          description: 'Limite de faturas a buscar (padrão: 1000, máximo: 5000)',
+          minimum: 1,
+          maximum: 5000
+        }
+      },
+    },
+  },
 ];
 
 // Create server instance
@@ -892,6 +916,32 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'whmcs_get_emails': {
         const params = args as unknown as GetEmailsParams;
         const result = await whmcsClient.getEmails(params);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      }
+
+      // Custom Combined Tools
+      case 'whmcs_get_unpaid_invoices_detailed': {
+        const result = await whmcsClient.getUnpaidInvoicesDetailed();
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'whmcs_get_all_unpaid_invoices_complete': {
+        const params = args as { limit?: number };
+        const result = await whmcsClient.getAllUnpaidInvoicesComplete(params.limit || 1000);
         return {
           content: [
             {
