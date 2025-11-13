@@ -1,0 +1,29 @@
+{
+  "name": "whmcs-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for WHMCS API integration - Ticket Management",
+  "type": "module",
+  "bin": {
+    "whmcs-mcp": "./build/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "whmcs",
+    "api",
+    "tickets"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  }
+}
