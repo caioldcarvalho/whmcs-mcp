@@ -761,3 +761,52 @@ export interface GetEmailsResponse extends WHMCSBaseResponse {
     email: EmailEntry[];
   };
 }
+
+// Module Command Types (Service Management)
+export interface ModuleCommandParams {
+  serviceid: number;
+}
+
+export interface ModuleSuspendParams extends ModuleCommandParams {
+  suspendreason?: string;
+}
+
+export interface ModuleCommandResponse extends WHMCSBaseResponse {
+  serviceid: number;
+}
+
+// Order Management Types
+export interface AcceptOrderParams {
+  orderid: number;
+  serverid?: number;
+  serviceusername?: string;
+  servicepassword?: string;
+  registrar?: string;
+  sendregistrar?: boolean;
+  autosetup?: boolean;
+  sendemail?: boolean;
+}
+
+export interface AcceptOrderResponse extends WHMCSBaseResponse {
+  orderid: number;
+}
+
+export interface CancelOrderParams {
+  orderid: number;
+  cancelsub?: boolean;
+  noemail?: boolean;
+}
+
+export interface CancelOrderResponse extends WHMCSBaseResponse {}
+
+export interface DeleteOrderParams {
+  orderid: number;
+}
+
+export interface DeleteOrderResponse extends WHMCSBaseResponse {}
+
+export interface PendingOrderParams {
+  orderid: number;
+}
+
+export interface PendingOrderResponse extends WHMCSBaseResponse {}

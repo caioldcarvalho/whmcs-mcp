@@ -30,6 +30,12 @@ import type {
   GetAdminUsersParams,
   GetContactsParams,
   GetEmailsParams,
+  ModuleCommandParams,
+  ModuleSuspendParams,
+  AcceptOrderParams,
+  CancelOrderParams,
+  DeleteOrderParams,
+  PendingOrderParams,
 } from './types.js';
 
 // Load environment variables
@@ -53,7 +59,7 @@ const whmcsClient = new WHMCSClient({
   apiUrl: WHMCS_API_URL,
 });
 
-// Define tools
+// Define tools with annotations
 const tools: Tool[] = [
   {
     name: 'whmcs_get_tickets',
@@ -92,6 +98,13 @@ const tools: Tool[] = [
         },
       },
     },
+    annotations: {
+      title: 'List Support Tickets',
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
   },
   {
     name: 'whmcs_get_ticket',
@@ -114,6 +127,13 @@ const tools: Tool[] = [
           description: 'Sort order for replies (ASC or DESC)',
         },
       },
+    },
+    annotations: {
+      title: 'Get Ticket Details',
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
     },
   },
   {
@@ -179,6 +199,13 @@ const tools: Tool[] = [
       },
       required: ['deptid', 'subject', 'message'],
     },
+    annotations: {
+      title: 'Create Support Ticket',
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
   },
   {
     name: 'whmcs_add_ticket_reply',
@@ -230,6 +257,13 @@ const tools: Tool[] = [
       },
       required: ['ticketid', 'message'],
     },
+    annotations: {
+      title: 'Add Ticket Reply',
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
   },
   {
     name: 'whmcs_update_ticket',
@@ -274,6 +308,13 @@ const tools: Tool[] = [
       },
       required: ['ticketid'],
     },
+    annotations: {
+      title: 'Update Ticket',
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
   },
   // Support Tools
   {
@@ -288,6 +329,13 @@ const tools: Tool[] = [
         },
       },
     },
+    annotations: {
+      title: 'List Support Departments',
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
   },
   {
     name: 'whmcs_get_support_statuses',
@@ -300,6 +348,13 @@ const tools: Tool[] = [
           description: 'Get counts for specific department ID',
         },
       },
+    },
+    annotations: {
+      title: 'Get Support Statuses',
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
     },
   },
   {
@@ -317,6 +372,13 @@ const tools: Tool[] = [
           description: 'Include counts grouped by status',
         },
       },
+    },
+    annotations: {
+      title: 'Get Ticket Counts',
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
     },
   },
   // Client Tools
@@ -355,6 +417,13 @@ const tools: Tool[] = [
         },
       },
     },
+    annotations: {
+      title: 'List Clients',
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
   },
   {
     name: 'whmcs_get_clients_details',
@@ -375,6 +444,13 @@ const tools: Tool[] = [
           description: 'Include additional client statistics',
         },
       },
+    },
+    annotations: {
+      title: 'Get Client Details',
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
     },
   },
   // Product Tools
@@ -397,6 +473,13 @@ const tools: Tool[] = [
           description: 'Filter by module name',
         },
       },
+    },
+    annotations: {
+      title: 'List Products',
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
     },
   },
   // Order Tools
@@ -431,6 +514,13 @@ const tools: Tool[] = [
           description: 'Filter by order status',
         },
       },
+    },
+    annotations: {
+      title: 'List Orders',
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
     },
   },
   // Invoice Tools
@@ -468,6 +558,13 @@ const tools: Tool[] = [
         },
       },
     },
+    annotations: {
+      title: 'List Invoices',
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
   },
   // Extended Client Tools
   {
@@ -485,6 +582,13 @@ const tools: Tool[] = [
         username2: { type: 'string' },
       },
     },
+    annotations: {
+      title: 'Get Client Products',
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
   },
   {
     name: 'whmcs_get_clients_domains',
@@ -498,6 +602,13 @@ const tools: Tool[] = [
         domainid: { type: 'number', description: 'Specific domain ID' },
         domain: { type: 'string', description: 'Domain name filter' },
       },
+    },
+    annotations: {
+      title: 'Get Client Domains',
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
     },
   },
   // System Tools
@@ -516,6 +627,13 @@ const tools: Tool[] = [
         ipaddress: { type: 'string', description: 'IP address filter' },
       },
     },
+    annotations: {
+      title: 'Get Activity Log',
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
   },
   {
     name: 'whmcs_get_stats',
@@ -526,16 +644,37 @@ const tools: Tool[] = [
         timeline_days: { type: 'number', description: 'Days of timeline data (max 90)' },
       },
     },
+    annotations: {
+      title: 'Get System Statistics',
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
   },
   {
     name: 'whmcs_get_currencies',
     description: 'List all configured currencies.',
     inputSchema: { type: 'object', properties: {} },
+    annotations: {
+      title: 'List Currencies',
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
   },
   {
     name: 'whmcs_get_payment_methods',
     description: 'List active payment methods.',
     inputSchema: { type: 'object', properties: {} },
+    annotations: {
+      title: 'List Payment Methods',
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
   },
   {
     name: 'whmcs_get_admin_users',
@@ -547,6 +686,13 @@ const tools: Tool[] = [
         email: { type: 'string', description: 'Email filter (partial match)' },
         include_disabled: { type: 'boolean', description: 'Include disabled admins' },
       },
+    },
+    annotations: {
+      title: 'List Admin Users',
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
     },
   },
   {
@@ -569,6 +715,13 @@ const tools: Tool[] = [
         country: { type: 'string' },
       },
     },
+    annotations: {
+      title: 'List Contacts',
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
   },
   {
     name: 'whmcs_get_emails',
@@ -584,6 +737,13 @@ const tools: Tool[] = [
       },
       required: ['clientid'],
     },
+    annotations: {
+      title: 'Get Client Emails',
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
   },
   // Custom Combined Tools
   {
@@ -593,20 +753,240 @@ const tools: Tool[] = [
       type: 'object',
       properties: {},
     },
+    annotations: {
+      title: 'Get Unpaid Invoices (Detailed)',
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
   },
   {
     name: 'whmcs_get_all_unpaid_invoices_complete',
-    description: 'Detectar TODAS as faturas não pagas com informações completas: cliente, fatura, produto específico de cada item da fatura, valor e telefone. Lista faturas não pagas e em atraso com detalhes completos dos produtos faturados.',
+    description: 'Get ALL unpaid invoices with complete information: client details, invoice data, specific product for each invoice item, amount, and phone number. Lists unpaid and overdue invoices with complete product details.',
     inputSchema: {
       type: 'object',
       properties: {
         limit: {
           type: 'number',
-          description: 'Limite de faturas a buscar (padrão: 1000, máximo: 5000)',
+          description: 'Maximum invoices to fetch (default: 1000, max: 5000)',
           minimum: 1,
           maximum: 5000
         }
       },
+    },
+    annotations: {
+      title: 'Get All Unpaid Invoices (Complete)',
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+  },
+  // Service Management Tools
+  {
+    name: 'whmcs_module_suspend',
+    description: 'Suspend a client service/product. This will run the module suspend action and update the service status to Suspended. Use with caution as it affects client access.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        serviceid: {
+          type: 'number',
+          description: 'The service ID to suspend (required)',
+        },
+        suspendreason: {
+          type: 'string',
+          description: 'Reason for suspension (e.g., "Non-payment", "Abuse", "Requested by client")',
+        },
+      },
+      required: ['serviceid'],
+    },
+    annotations: {
+      title: 'Suspend Service',
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+  },
+  {
+    name: 'whmcs_module_unsuspend',
+    description: 'Unsuspend a previously suspended client service/product. This will run the module unsuspend action and update the service status back to Active.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        serviceid: {
+          type: 'number',
+          description: 'The service ID to unsuspend (required)',
+        },
+      },
+      required: ['serviceid'],
+    },
+    annotations: {
+      title: 'Unsuspend Service',
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+  },
+  {
+    name: 'whmcs_module_terminate',
+    description: 'Terminate a client service/product permanently. WARNING: This is irreversible and will delete the service on the server. Use only when absolutely certain.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        serviceid: {
+          type: 'number',
+          description: 'The service ID to terminate (required)',
+        },
+      },
+      required: ['serviceid'],
+    },
+    annotations: {
+      title: 'Terminate Service',
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
+  },
+  {
+    name: 'whmcs_module_create',
+    description: 'Provision/create a client service on the server. This runs the module create action to set up the service (e.g., create hosting account, provision VPS).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        serviceid: {
+          type: 'number',
+          description: 'The service ID to provision (required)',
+        },
+      },
+      required: ['serviceid'],
+    },
+    annotations: {
+      title: 'Create/Provision Service',
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
+  },
+  // Order Management Tools
+  {
+    name: 'whmcs_accept_order',
+    description: 'Accept and activate a pending order. This will provision services, register domains, and send welcome emails as configured.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        orderid: {
+          type: 'number',
+          description: 'The order ID to accept (required)',
+        },
+        serverid: {
+          type: 'number',
+          description: 'Server ID to provision services on (overrides product default)',
+        },
+        serviceusername: {
+          type: 'string',
+          description: 'Username for the service (overrides auto-generated)',
+        },
+        servicepassword: {
+          type: 'string',
+          description: 'Password for the service (overrides auto-generated)',
+        },
+        registrar: {
+          type: 'string',
+          description: 'Registrar module for domain registration',
+        },
+        autosetup: {
+          type: 'boolean',
+          description: 'Whether to automatically provision services (default: true)',
+        },
+        sendemail: {
+          type: 'boolean',
+          description: 'Whether to send order confirmation email (default: true)',
+        },
+      },
+      required: ['orderid'],
+    },
+    annotations: {
+      title: 'Accept Order',
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
+  },
+  {
+    name: 'whmcs_cancel_order',
+    description: 'Cancel an order. This will cancel all associated services and domains.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        orderid: {
+          type: 'number',
+          description: 'The order ID to cancel (required)',
+        },
+        cancelsub: {
+          type: 'boolean',
+          description: 'Also cancel any associated subscriptions',
+        },
+        noemail: {
+          type: 'boolean',
+          description: 'Do not send cancellation email to client',
+        },
+      },
+      required: ['orderid'],
+    },
+    annotations: {
+      title: 'Cancel Order',
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+  },
+  {
+    name: 'whmcs_delete_order',
+    description: 'Permanently delete an order from the system. WARNING: This is irreversible and removes all record of the order.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        orderid: {
+          type: 'number',
+          description: 'The order ID to delete (required)',
+        },
+      },
+      required: ['orderid'],
+    },
+    annotations: {
+      title: 'Delete Order',
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
+  },
+  {
+    name: 'whmcs_pending_order',
+    description: 'Set an order back to Pending status. Useful for orders that need review or were incorrectly processed.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        orderid: {
+          type: 'number',
+          description: 'The order ID to set as pending (required)',
+        },
+      },
+      required: ['orderid'],
+    },
+    annotations: {
+      title: 'Set Order Pending',
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
     },
   },
 ];
@@ -942,6 +1322,112 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'whmcs_get_all_unpaid_invoices_complete': {
         const params = args as { limit?: number };
         const result = await whmcsClient.getAllUnpaidInvoicesComplete(params.limit || 1000);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      }
+
+      // Service Management Tools
+      case 'whmcs_module_suspend': {
+        const params = args as ModuleSuspendParams;
+        const result = await whmcsClient.moduleSuspend(params);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'whmcs_module_unsuspend': {
+        const params = args as ModuleCommandParams;
+        const result = await whmcsClient.moduleUnsuspend(params);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'whmcs_module_terminate': {
+        const params = args as ModuleCommandParams;
+        const result = await whmcsClient.moduleTerminate(params);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'whmcs_module_create': {
+        const params = args as ModuleCommandParams;
+        const result = await whmcsClient.moduleCreate(params);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      }
+
+      // Order Management Tools
+      case 'whmcs_accept_order': {
+        const params = args as AcceptOrderParams;
+        const result = await whmcsClient.acceptOrder(params);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'whmcs_cancel_order': {
+        const params = args as CancelOrderParams;
+        const result = await whmcsClient.cancelOrder(params);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'whmcs_delete_order': {
+        const params = args as DeleteOrderParams;
+        const result = await whmcsClient.deleteOrder(params);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'whmcs_pending_order': {
+        const params = args as PendingOrderParams;
+        const result = await whmcsClient.pendingOrder(params);
         return {
           content: [
             {

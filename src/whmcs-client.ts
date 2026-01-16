@@ -43,6 +43,17 @@ import type {
   GetContactsResponse,
   GetEmailsParams,
   GetEmailsResponse,
+  ModuleCommandParams,
+  ModuleSuspendParams,
+  ModuleCommandResponse,
+  AcceptOrderParams,
+  AcceptOrderResponse,
+  CancelOrderParams,
+  CancelOrderResponse,
+  DeleteOrderParams,
+  DeleteOrderResponse,
+  PendingOrderParams,
+  PendingOrderResponse,
 } from './types.js';
 
 export class WHMCSClient {
@@ -207,6 +218,42 @@ export class WHMCSClient {
 
   async getEmails(params: GetEmailsParams): Promise<GetEmailsResponse> {
     return this.request<GetEmailsResponse>('GetEmails', params);
+  }
+
+  // Service Management Methods (Module Commands)
+
+  async moduleSuspend(params: ModuleSuspendParams): Promise<ModuleCommandResponse> {
+    return this.request<ModuleCommandResponse>('ModuleSuspend', params);
+  }
+
+  async moduleUnsuspend(params: ModuleCommandParams): Promise<ModuleCommandResponse> {
+    return this.request<ModuleCommandResponse>('ModuleUnsuspend', params);
+  }
+
+  async moduleTerminate(params: ModuleCommandParams): Promise<ModuleCommandResponse> {
+    return this.request<ModuleCommandResponse>('ModuleTerminate', params);
+  }
+
+  async moduleCreate(params: ModuleCommandParams): Promise<ModuleCommandResponse> {
+    return this.request<ModuleCommandResponse>('ModuleCreate', params);
+  }
+
+  // Order Management Methods
+
+  async acceptOrder(params: AcceptOrderParams): Promise<AcceptOrderResponse> {
+    return this.request<AcceptOrderResponse>('AcceptOrder', params);
+  }
+
+  async cancelOrder(params: CancelOrderParams): Promise<CancelOrderResponse> {
+    return this.request<CancelOrderResponse>('CancelOrder', params);
+  }
+
+  async deleteOrder(params: DeleteOrderParams): Promise<DeleteOrderResponse> {
+    return this.request<DeleteOrderResponse>('DeleteOrder', params);
+  }
+
+  async pendingOrder(params: PendingOrderParams): Promise<PendingOrderResponse> {
+    return this.request<PendingOrderResponse>('PendingOrder', params);
   }
 
   // Custom Combined Methods
