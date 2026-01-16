@@ -1761,6 +1761,14 @@ async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error('WHMCS MCP Server running on stdio');
+  process.stdin.resume();
+  const keepAlive = setInterval(() => {}, 60_000);
+  await new Promise<void>((resolve) => {
+    transport.onclose = () => {
+      clearInterval(keepAlive);
+      resolve();
+    };
+  });
 }
 
 main().catch((error) => {
