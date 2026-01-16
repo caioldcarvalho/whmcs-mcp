@@ -115,26 +115,16 @@ type ToolOutput = {
   pagination?: Pagination;
 };
 
-function formatToolResponse(title: string, responseFormat: ResponseFormat, output: ToolOutput) {
-  let text: string;
-  if (responseFormat === 'markdown') {
-    const lines = [`# ${title}`];
-    const pagination = output.pagination;
-    if (pagination) {
-      lines.push('');
-      lines.push(`- Total: ${pagination.total}`);
-      lines.push(`- Returned: ${pagination.count}`);
-      lines.push(`- Offset: ${pagination.offset}`);
-      lines.push(`- Has more: ${pagination.has_more ? 'yes' : 'no'}`);
-    }
-    lines.push('');
-    lines.push('```json');
-    lines.push(JSON.stringify(output, null, 2));
-    lines.push('```');
-    text = lines.join('\n');
-  } else {
-    text = JSON.stringify(output, null, 2);
-  }
+function formatToolResponse(
+  toolName: string,
+  title: string,
+  responseFormat: ResponseFormat,
+  output: ToolOutput
+) {
+  const text =
+    responseFormat === 'markdown'
+      ? renderMarkdown(toolName, title, output)
+      : JSON.stringify(output, null, 2);
 
   return {
     content: [
@@ -174,6 +164,183 @@ function wrapData(data: unknown, pagination?: Pagination): ToolOutput {
     data,
     pagination,
   };
+}
+
+function renderMarkdown(toolName: string, title: string, output: ToolOutput): string {
+  const lines: string[] = [`# ${title}`];
+  const pagination = output.pagination;
+
+  if (pagination) {
+    lines.push('');
+    lines.push(
+      `Found ${pagination.count} of ${pagination.total} (offset ${pagination.offset}).`
+    );
+    if (pagination.has_more && pagination.next_offset !== undefined) {
+      lines.push(`Next offset: ${pagination.next_offset}`);
+    }
+  }
+
+  const data = output.data as Record<string, unknown> | undefined;
+  const addTable = (headers: string[], rows: string[][]) => {
+    if (!rows.length) {
+      return;
+    }
+    lines.push('');
+    lines.push(`| ${headers.join(' | ')} |`);
+    lines.push(`| ${headers.map(() => '---').join(' | ')} |`);
+    for (const row of rows) {
+      lines.push(`| ${row.join(' | ')} |`);
+    }
+  };
+
+  const getArray = (path: string[]) => {
+    let current: any = data;
+    for (const key of path) {
+      if (!current || typeof current !== 'object') return undefined;
+      current = current[key];
+    }
+    return Array.isArray(current) ? current : undefined;
+  };
+
+  switch (toolName) {
+    case 'whmcs_get_support_departments': {
+      const departments = getArray(['departments', 'department']) ?? [];
+      const rows = departments.map((dept) => [
+        String(dept.id ?? ''),
+        String(dept.name ?? ''),
+        String(dept.awaitingreply ?? ''),
+        String(dept.opentickets ?? ''),
+      ]);
+      addTable(['ID', 'Name', 'Awaiting', 'Open'], rows);
+      break;
+    }
+    case 'whmcs_get_support_statuses': {
+      const statuses = getArray(['statuses', 'status']) ?? [];
+      const rows = statuses.map((status) => [
+        String(status.title ?? ''),
+        String(status.count ?? ''),
+        String(status.color ?? ''),
+      ]);
+      addTable(['Status', 'Count', 'Color'], rows);
+      break;
+    }
+    case 'whmcs_get_tickets': {
+      const tickets = getArray(['tickets', 'ticket']) ?? [];
+      const rows = tickets.map((ticket) => [
+        String(ticket.id ?? ''),
+        String(ticket.subject ?? ''),
+        String(ticket.status ?? ''),
+        String(ticket.priority ?? ''),
+        String(ticket.lastreply ?? ''),
+      ]);
+      addTable(['ID', 'Subject', 'Status', 'Priority', 'Last Reply'], rows);
+      break;
+    }
+    case 'whmcs_get_clients': {
+      const clients = getArray(['clients', 'client']) ?? [];
+      const rows = clients.map((client) => [
+        String(client.id ?? ''),
+        `${client.firstname ?? ''} ${client.lastname ?? ''}`.trim(),
+        String(client.email ?? ''),
+        String(client.status ?? ''),
+        String(client.datecreated ?? ''),
+      ]);
+      addTable(['ID', 'Name', 'Email', 'Status', 'Created'], rows);
+      break;
+    }
+    case 'whmcs_get_products': {
+      const products = getArray(['products', 'product']) ?? [];
+      const rows = products.map((product) => [
+        String(product.pid ?? ''),
+        String(product.name ?? ''),
+        String(product.type ?? ''),
+        String(product.module ?? ''),
+      ]);
+      addTable(['ID', 'Name', 'Type', 'Module'], rows);
+      break;
+    }
+    case 'whmcs_get_orders': {
+      const orders = getArray(['orders', 'order']) ?? [];
+      const rows = orders.map((order) => [
+        String(order.id ?? ''),
+        String(order.userid ?? ''),
+        String(order.status ?? ''),
+        String(order.amount ?? ''),
+        String(order.date ?? ''),
+      ]);
+      addTable(['ID', 'Client ID', 'Status', 'Amount', 'Date'], rows);
+      break;
+    }
+    case 'whmcs_get_invoices': {
+      const invoices = getArray(['invoices', 'invoice']) ?? [];
+      const rows = invoices.map((invoice) => [
+        String(invoice.id ?? ''),
+        String(invoice.userid ?? ''),
+        String(invoice.status ?? ''),
+        String(invoice.total ?? ''),
+        String(invoice.duedate ?? ''),
+      ]);
+      addTable(['ID', 'Client ID', 'Status', 'Total', 'Due Date'], rows);
+      break;
+    }
+    case 'whmcs_get_activity_log': {
+      const entries = getArray(['activity', 'entry']) ?? [];
+      const rows = entries.map((entry) => [
+        String(entry.id ?? ''),
+        String(entry.date ?? ''),
+        String(entry.description ?? '').slice(0, 80),
+      ]);
+      addTable(['ID', 'Date', 'Description'], rows);
+      break;
+    }
+    case 'whmcs_get_admin_users': {
+      const admins = getArray(['admin_users', 'admin_user']) ?? [];
+      const rows = admins.map((admin) => [
+        String(admin.id ?? ''),
+        String(admin.firstname ?? ''),
+        String(admin.lastname ?? ''),
+        String(admin.email ?? ''),
+      ]);
+      addTable(['ID', 'First', 'Last', 'Email'], rows);
+      break;
+    }
+    case 'whmcs_get_contacts': {
+      const contacts = getArray(['contacts', 'contact']) ?? [];
+      const rows = contacts.map((contact) => [
+        String(contact.id ?? ''),
+        `${contact.firstname ?? ''} ${contact.lastname ?? ''}`.trim(),
+        String(contact.email ?? ''),
+        String(contact.userid ?? ''),
+      ]);
+      addTable(['ID', 'Name', 'Email', 'Client ID'], rows);
+      break;
+    }
+    case 'whmcs_get_emails': {
+      const emails = getArray(['emails', 'email']) ?? [];
+      const rows = emails.map((email) => [
+        String(email.id ?? ''),
+        String(email.subject ?? ''),
+        String(email.date ?? ''),
+        String(email.failed ?? ''),
+      ]);
+      addTable(['ID', 'Subject', 'Date', 'Failed'], rows);
+      break;
+    }
+    default:
+      break;
+  }
+
+  if (lines.length === 1) {
+    lines.push('');
+  }
+  if (!lines.includes('```json')) {
+    lines.push('');
+    lines.push('```json');
+    lines.push(JSON.stringify(output, null, 2));
+    lines.push('```');
+  }
+
+  return lines.join('\n');
 }
 
 // Define tools with annotations
@@ -1410,6 +1577,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const total = Number(result.totalresults || 0);
         const pagination = buildPagination(total, count, offset);
         return formatToolResponse(
+          name,
           toolTitle,
           responseFormat,
           wrapData(result, pagination)
@@ -1419,25 +1587,25 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'whmcs_get_ticket': {
         const { response_format: responseFormat = 'markdown', ...params } = parseToolArgs(getTicketSchema, args);
         const result = await whmcsClient.getTicket(params as GetTicketParams);
-        return formatToolResponse(toolTitle, responseFormat, { data: result });
+        return formatToolResponse(name, toolTitle, responseFormat, { data: result });
       }
 
       case 'whmcs_open_ticket': {
         const { response_format: responseFormat = 'markdown', ...params } = parseToolArgs(openTicketSchema, args);
         const result = await whmcsClient.openTicket(params as OpenTicketParams);
-        return formatToolResponse(toolTitle, responseFormat, { data: result });
+        return formatToolResponse(name, toolTitle, responseFormat, { data: result });
       }
 
       case 'whmcs_add_ticket_reply': {
         const { response_format: responseFormat = 'markdown', ...params } = parseToolArgs(addTicketReplySchema, args);
         const result = await whmcsClient.addTicketReply(params as AddTicketReplyParams);
-        return formatToolResponse(toolTitle, responseFormat, { data: result });
+        return formatToolResponse(name, toolTitle, responseFormat, { data: result });
       }
 
       case 'whmcs_update_ticket': {
         const { response_format: responseFormat = 'markdown', ...params } = parseToolArgs(updateTicketSchema, args);
         const result = await whmcsClient.updateTicket(params as UpdateTicketParams);
-        return formatToolResponse(toolTitle, responseFormat, { data: result });
+        return formatToolResponse(name, toolTitle, responseFormat, { data: result });
       }
 
       // Support Tools
@@ -1448,6 +1616,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const total = Number(result.totalresults || count);
         const pagination = buildPagination(total, count, 0);
         return formatToolResponse(
+          name,
           toolTitle,
           responseFormat,
           wrapData(result, pagination)
@@ -1461,6 +1630,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const total = Number(result.totalresults || count);
         const pagination = buildPagination(total, count, 0);
         return formatToolResponse(
+          name,
           toolTitle,
           responseFormat,
           wrapData(result, pagination)
@@ -1470,7 +1640,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'whmcs_get_ticket_counts': {
         const { response_format: responseFormat = 'markdown', ...params } = parseToolArgs(getTicketCountsSchema, args);
         const result = await whmcsClient.getTicketCounts(params as GetTicketCountsParams);
-        return formatToolResponse(toolTitle, responseFormat, { data: result });
+        return formatToolResponse(name, toolTitle, responseFormat, { data: result });
       }
 
       // Client Tools
@@ -1482,6 +1652,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const total = Number(result.totalresults || 0);
         const pagination = buildPagination(total, count, offset);
         return formatToolResponse(
+          name,
           toolTitle,
           responseFormat,
           wrapData(result, pagination)
@@ -1491,7 +1662,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'whmcs_get_clients_details': {
         const { response_format: responseFormat = 'markdown', ...params } = parseToolArgs(getClientsDetailsSchema, args);
         const result = await whmcsClient.getClientsDetails(params as GetClientsDetailsParams);
-        return formatToolResponse(toolTitle, responseFormat, { data: result });
+        return formatToolResponse(name, toolTitle, responseFormat, { data: result });
       }
 
       // Product Tools
@@ -1503,6 +1674,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const total = Number(result.totalresults || 0);
         const pagination = buildPagination(total, count, offset);
         return formatToolResponse(
+          name,
           toolTitle,
           responseFormat,
           wrapData(result, pagination)
@@ -1518,6 +1690,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const total = Number(result.totalresults || 0);
         const pagination = buildPagination(total, count, offset);
         return formatToolResponse(
+          name,
           toolTitle,
           responseFormat,
           wrapData(result, pagination)
@@ -1533,6 +1706,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const total = Number(result.totalresults || 0);
         const pagination = buildPagination(total, count, offset);
         return formatToolResponse(
+          name,
           toolTitle,
           responseFormat,
           wrapData(result, pagination)
@@ -1548,6 +1722,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const total = Number(result.totalresults || 0);
         const pagination = buildPagination(total, count, offset);
         return formatToolResponse(
+          name,
           toolTitle,
           responseFormat,
           wrapData(result, pagination)
@@ -1562,6 +1737,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const total = Number(result.totalresults || 0);
         const pagination = buildPagination(total, count, offset);
         return formatToolResponse(
+          name,
           toolTitle,
           responseFormat,
           wrapData(result, pagination)
@@ -1577,6 +1753,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const total = Number(result.totalresults || count);
         const pagination = buildPagination(total, count, offset);
         return formatToolResponse(
+          name,
           toolTitle,
           responseFormat,
           wrapData(result, pagination)
@@ -1586,7 +1763,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'whmcs_get_stats': {
         const { response_format: responseFormat = 'markdown', ...params } = parseToolArgs(getStatsSchema, args);
         const result = await whmcsClient.getStats(params as GetStatsParams);
-        return formatToolResponse(toolTitle, responseFormat, { data: result });
+        return formatToolResponse(name, toolTitle, responseFormat, { data: result });
       }
 
       case 'whmcs_get_currencies': {
@@ -1596,6 +1773,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const total = Number(result.totalresults || count);
         const pagination = buildPagination(total, count, 0);
         return formatToolResponse(
+          name,
           toolTitle,
           responseFormat,
           wrapData(result, pagination)
@@ -1609,6 +1787,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const total = Number(result.totalresults || count);
         const pagination = buildPagination(total, count, 0);
         return formatToolResponse(
+          name,
           toolTitle,
           responseFormat,
           wrapData(result, pagination)
@@ -1622,6 +1801,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const total = Number(result.count || count);
         const pagination = buildPagination(total, count, 0);
         return formatToolResponse(
+          name,
           toolTitle,
           responseFormat,
           wrapData(result, pagination)
@@ -1636,6 +1816,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const total = Number(result.totalresults || 0);
         const pagination = buildPagination(total, count, offset);
         return formatToolResponse(
+          name,
           toolTitle,
           responseFormat,
           wrapData(result, pagination)
@@ -1650,6 +1831,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const total = Number(result.totalresults || 0);
         const pagination = buildPagination(total, count, offset);
         return formatToolResponse(
+          name,
           toolTitle,
           responseFormat,
           wrapData(result, pagination)
@@ -1667,6 +1849,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const total = Number(result.total_unpaid_invoices || count);
         const pagination = buildPagination(total, count, offset);
         return formatToolResponse(
+          name,
           toolTitle,
           responseFormat,
           wrapData(result, pagination)
@@ -1683,6 +1866,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const total = Number(result.summary?.total_unpaid_invoices || count);
         const pagination = buildPagination(total, count, offset);
         return formatToolResponse(
+          name,
           toolTitle,
           responseFormat,
           wrapData(result, pagination)
@@ -1693,50 +1877,50 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'whmcs_module_suspend': {
         const { response_format: responseFormat = 'markdown', ...params } = parseToolArgs(moduleSuspendSchema, args);
         const result = await whmcsClient.moduleSuspend(params as ModuleSuspendParams);
-        return formatToolResponse(toolTitle, responseFormat, { data: result });
+        return formatToolResponse(name, toolTitle, responseFormat, { data: result });
       }
 
       case 'whmcs_module_unsuspend': {
         const { response_format: responseFormat = 'markdown', ...params } = parseToolArgs(moduleCommandSchema, args);
         const result = await whmcsClient.moduleUnsuspend(params as ModuleCommandParams);
-        return formatToolResponse(toolTitle, responseFormat, { data: result });
+        return formatToolResponse(name, toolTitle, responseFormat, { data: result });
       }
 
       case 'whmcs_module_terminate': {
         const { response_format: responseFormat = 'markdown', ...params } = parseToolArgs(moduleCommandSchema, args);
         const result = await whmcsClient.moduleTerminate(params as ModuleCommandParams);
-        return formatToolResponse(toolTitle, responseFormat, { data: result });
+        return formatToolResponse(name, toolTitle, responseFormat, { data: result });
       }
 
       case 'whmcs_module_create': {
         const { response_format: responseFormat = 'markdown', ...params } = parseToolArgs(moduleCommandSchema, args);
         const result = await whmcsClient.moduleCreate(params as ModuleCommandParams);
-        return formatToolResponse(toolTitle, responseFormat, { data: result });
+        return formatToolResponse(name, toolTitle, responseFormat, { data: result });
       }
 
       // Order Management Tools
       case 'whmcs_accept_order': {
         const { response_format: responseFormat = 'markdown', ...params } = parseToolArgs(acceptOrderSchema, args);
         const result = await whmcsClient.acceptOrder(params as AcceptOrderParams);
-        return formatToolResponse(toolTitle, responseFormat, { data: result });
+        return formatToolResponse(name, toolTitle, responseFormat, { data: result });
       }
 
       case 'whmcs_cancel_order': {
         const { response_format: responseFormat = 'markdown', ...params } = parseToolArgs(cancelOrderSchema, args);
         const result = await whmcsClient.cancelOrder(params as CancelOrderParams);
-        return formatToolResponse(toolTitle, responseFormat, { data: result });
+        return formatToolResponse(name, toolTitle, responseFormat, { data: result });
       }
 
       case 'whmcs_delete_order': {
         const { response_format: responseFormat = 'markdown', ...params } = parseToolArgs(deleteOrderSchema, args);
         const result = await whmcsClient.deleteOrder(params as DeleteOrderParams);
-        return formatToolResponse(toolTitle, responseFormat, { data: result });
+        return formatToolResponse(name, toolTitle, responseFormat, { data: result });
       }
 
       case 'whmcs_pending_order': {
         const { response_format: responseFormat = 'markdown', ...params } = parseToolArgs(pendingOrderSchema, args);
         const result = await whmcsClient.pendingOrder(params as PendingOrderParams);
-        return formatToolResponse(toolTitle, responseFormat, { data: result });
+        return formatToolResponse(name, toolTitle, responseFormat, { data: result });
       }
 
       default:
