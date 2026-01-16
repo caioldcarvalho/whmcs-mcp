@@ -9,6 +9,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import dotenv from 'dotenv';
 import { WHMCSClient } from './whmcs-client.js';
+import { z } from 'zod';
 import type {
   GetTicketsParams,
   GetTicketParams,
@@ -59,8 +60,72 @@ const whmcsClient = new WHMCSClient({
   apiUrl: WHMCS_API_URL,
 });
 
+const ResponseFormatSchema = z.enum(['markdown', 'json']).default('markdown');
+type ResponseFormat = z.infer<typeof ResponseFormatSchema>;
+
+const responseFormatProperty = {
+  type: 'string',
+  enum: ['markdown', 'json'],
+  description: 'Output format: markdown or json (default: markdown)',
+  default: 'markdown',
+} as const;
+
+const genericOutputSchema = {
+  type: 'object',
+  additionalProperties: true,
+} as const;
+
+function addResponseFormatToSchema(inputSchema: Tool['inputSchema']): Tool['inputSchema'] {
+  const properties = inputSchema.properties ?? {};
+  return {
+    ...inputSchema,
+    properties: {
+      ...properties,
+      response_format: responseFormatProperty,
+    },
+  };
+}
+
+function formatZodError(error: z.ZodError): string {
+  return error.errors
+    .map((issue) => {
+      const path = issue.path.length ? issue.path.join('.') : 'input';
+      return `${path}: ${issue.message}`;
+    })
+    .join('; ');
+}
+
+function parseToolArgs<T>(schema: z.ZodType<T>, args: unknown): T {
+  const parsed = schema.safeParse(args ?? {});
+  if (!parsed.success) {
+    throw new Error(`Invalid arguments: ${formatZodError(parsed.error)}`);
+  }
+  return parsed.data;
+}
+
+function formatToolResponse(
+  title: string,
+  responseFormat: ResponseFormat,
+  output: Record<string, unknown>
+) {
+  const text =
+    responseFormat === 'markdown'
+      ? `# ${title}\n\n\`\`\`json\n${JSON.stringify(output, null, 2)}\n\`\`\``
+      : JSON.stringify(output, null, 2);
+
+  return {
+    content: [
+      {
+        type: 'text',
+        text,
+      },
+    ],
+    structuredContent: output,
+  };
+}
+
 // Define tools with annotations
-const tools: Tool[] = [
+const rawTools = [
   {
     name: 'whmcs_get_tickets',
     description:
@@ -991,6 +1056,257 @@ const tools: Tool[] = [
   },
 ];
 
+const tools: Tool[] = rawTools.map((tool) => ({
+  ...tool,
+  inputSchema: addResponseFormatToSchema(tool.inputSchema),
+  outputSchema: genericOutputSchema,
+}));
+
+const toolTitleByName = new Map<string, string>(
+  rawTools.map((tool) => [tool.name, tool.annotations?.title ?? tool.name])
+);
+
+const zNonNegativeInt = z.number().int().min(0);
+const zPositiveInt = z.number().int().min(1);
+
+const withResponseFormat = <T extends z.ZodRawShape>(shape: T) =>
+  z
+    .object({
+      ...shape,
+      response_format: ResponseFormatSchema,
+    })
+    .strict();
+
+const getTicketsSchema = withResponseFormat({
+  limitstart: zNonNegativeInt.optional(),
+  limitnum: zPositiveInt.optional(),
+  deptid: zPositiveInt.optional(),
+  clientid: zPositiveInt.optional(),
+  email: z.string().min(1).optional(),
+  status: z.string().min(1).optional(),
+  subject: z.string().min(1).optional(),
+  ignore_dept_assignments: z.boolean().optional(),
+});
+
+const getTicketSchema = withResponseFormat({
+  ticketid: zPositiveInt.optional(),
+  ticketnum: z.string().min(1).optional(),
+  repliessort: z.enum(['ASC', 'DESC']).optional(),
+}).superRefine((data, ctx) => {
+  if (!data.ticketid && !data.ticketnum) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Either ticketid or ticketnum must be provided',
+      path: ['ticketid'],
+    });
+  }
+});
+
+const openTicketSchema = withResponseFormat({
+  deptid: zPositiveInt,
+  subject: z.string().min(1),
+  message: z.string().min(1),
+  clientid: zPositiveInt.optional(),
+  userid: zPositiveInt.optional(),
+  contactid: zPositiveInt.optional(),
+  name: z.string().min(1).optional(),
+  email: z.string().min(1).optional(),
+  priority: z.enum(['Low', 'Medium', 'High']).optional(),
+  serviceid: zPositiveInt.optional(),
+  domainid: zPositiveInt.optional(),
+  markdown: z.boolean().optional(),
+  noemail: z.boolean().optional(),
+});
+
+const addTicketReplySchema = withResponseFormat({
+  ticketid: zPositiveInt,
+  message: z.string().min(1),
+  clientid: zPositiveInt.optional(),
+  contactid: zPositiveInt.optional(),
+  adminusername: z.string().min(1).optional(),
+  name: z.string().min(1).optional(),
+  email: z.string().min(1).optional(),
+  status: z.string().min(1).optional(),
+  markdown: z.boolean().optional(),
+  noemail: z.boolean().optional(),
+});
+
+const updateTicketSchema = withResponseFormat({
+  ticketid: zPositiveInt,
+  deptid: zPositiveInt.optional(),
+  subject: z.string().min(1).optional(),
+  priority: z.enum(['Low', 'Medium', 'High']).optional(),
+  status: z.string().min(1).optional(),
+  userid: zPositiveInt.optional(),
+  flag: zPositiveInt.optional(),
+  removeFlag: z.boolean().optional(),
+});
+
+const getSupportDepartmentsSchema = withResponseFormat({
+  ignore_dept_assignments: z.boolean().optional(),
+});
+
+const getSupportStatusesSchema = withResponseFormat({
+  deptid: zPositiveInt.optional(),
+});
+
+const getTicketCountsSchema = withResponseFormat({
+  ignoreDepartmentAssignments: z.boolean().optional(),
+  includeCountsByStatus: z.boolean().optional(),
+});
+
+const getClientsSchema = withResponseFormat({
+  limitstart: zNonNegativeInt.optional(),
+  limitnum: zPositiveInt.optional(),
+  sorting: z.enum(['ASC', 'DESC']).optional(),
+  status: z.enum(['Active', 'Inactive', 'Closed']).optional(),
+  search: z.string().min(1).optional(),
+  orderby: z
+    .enum(['id', 'firstname', 'lastname', 'companyname', 'email', 'groupid', 'datecreated', 'status'])
+    .optional(),
+});
+
+const getClientsDetailsSchema = withResponseFormat({
+  clientid: zPositiveInt.optional(),
+  email: z.string().email().optional(),
+  stats: z.boolean().optional(),
+}).superRefine((data, ctx) => {
+  if (!data.clientid && !data.email) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Either clientid or email must be provided',
+      path: ['clientid'],
+    });
+  }
+});
+
+const getProductsSchema = withResponseFormat({
+  pid: z.union([zPositiveInt, z.string().min(1)]).optional(),
+  gid: zPositiveInt.optional(),
+  module: z.string().min(1).optional(),
+});
+
+const getOrdersSchema = withResponseFormat({
+  limitstart: zNonNegativeInt.optional(),
+  limitnum: zPositiveInt.optional(),
+  id: zPositiveInt.optional(),
+  userid: zPositiveInt.optional(),
+  requestor_id: zPositiveInt.optional(),
+  status: z.string().min(1).optional(),
+});
+
+const getInvoicesSchema = withResponseFormat({
+  limitstart: zNonNegativeInt.optional(),
+  limitnum: zPositiveInt.optional(),
+  userid: zPositiveInt.optional(),
+  status: z.string().min(1).optional(),
+  orderby: z.enum(['id', 'invoicenumber', 'date', 'duedate', 'total', 'status']).optional(),
+  order: z.enum(['asc', 'desc']).optional(),
+});
+
+const getClientsProductsSchema = withResponseFormat({
+  limitstart: zNonNegativeInt.optional(),
+  limitnum: zPositiveInt.optional(),
+  clientid: zPositiveInt.optional(),
+  serviceid: zPositiveInt.optional(),
+  pid: zPositiveInt.optional(),
+  domain: z.string().min(1).optional(),
+  username2: z.string().min(1).optional(),
+});
+
+const getClientsDomainsSchema = withResponseFormat({
+  limitstart: zNonNegativeInt.optional(),
+  limitnum: zPositiveInt.optional(),
+  clientid: zPositiveInt.optional(),
+  domainid: zPositiveInt.optional(),
+  domain: z.string().min(1).optional(),
+});
+
+const getActivityLogSchema = withResponseFormat({
+  limitstart: zNonNegativeInt.optional(),
+  limitnum: zPositiveInt.optional(),
+  clientid: zPositiveInt.optional(),
+  date: z.string().min(1).optional(),
+  user: z.string().min(1).optional(),
+  description: z.string().min(1).optional(),
+  ipaddress: z.string().min(1).optional(),
+});
+
+const getStatsSchema = withResponseFormat({
+  timeline_days: zPositiveInt.max(90).optional(),
+});
+
+const getCurrenciesSchema = withResponseFormat({});
+const getPaymentMethodsSchema = withResponseFormat({});
+
+const getAdminUsersSchema = withResponseFormat({
+  roleid: zPositiveInt.optional(),
+  email: z.string().email().optional(),
+  include_disabled: z.boolean().optional(),
+});
+
+const getContactsSchema = withResponseFormat({
+  limitstart: zNonNegativeInt.optional(),
+  limitnum: zPositiveInt.optional(),
+  userid: zPositiveInt.optional(),
+  firstname: z.string().min(1).optional(),
+  lastname: z.string().min(1).optional(),
+  companyname: z.string().min(1).optional(),
+  email: z.string().email().optional(),
+  phonenumber: z.string().min(1).optional(),
+  address1: z.string().min(1).optional(),
+  city: z.string().min(1).optional(),
+  state: z.string().min(1).optional(),
+  country: z.string().min(1).optional(),
+});
+
+const getEmailsSchema = withResponseFormat({
+  clientid: zPositiveInt,
+  limitstart: zNonNegativeInt.optional(),
+  limitnum: zPositiveInt.optional(),
+  date: z.string().min(1).optional(),
+  subject: z.string().min(1).optional(),
+});
+
+const getUnpaidInvoicesDetailedSchema = withResponseFormat({});
+
+const getAllUnpaidInvoicesCompleteSchema = withResponseFormat({
+  limit: zPositiveInt.max(5000).optional(),
+});
+
+const moduleSuspendSchema = withResponseFormat({
+  serviceid: zPositiveInt,
+  suspendreason: z.string().min(1).optional(),
+});
+
+const moduleCommandSchema = withResponseFormat({
+  serviceid: zPositiveInt,
+});
+
+const acceptOrderSchema = withResponseFormat({
+  orderid: zPositiveInt,
+  serverid: zPositiveInt.optional(),
+  serviceusername: z.string().min(1).optional(),
+  servicepassword: z.string().min(1).optional(),
+  registrar: z.string().min(1).optional(),
+  autosetup: z.boolean().optional(),
+  sendemail: z.boolean().optional(),
+});
+
+const cancelOrderSchema = withResponseFormat({
+  orderid: zPositiveInt,
+  cancelsub: z.boolean().optional(),
+  noemail: z.boolean().optional(),
+});
+
+const deleteOrderSchema = withResponseFormat({
+  orderid: zPositiveInt,
+});
+
+const pendingOrderSchema = withResponseFormat({
+  orderid: zPositiveInt,
+});
+
 // Create server instance
 const server = new Server(
   {
@@ -1013,429 +1329,209 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     const { name, arguments: args } = request.params;
+    const toolTitle = toolTitleByName.get(name) ?? name;
 
     switch (name) {
       case 'whmcs_get_tickets': {
-        const params = args as GetTicketsParams;
-        const result = await whmcsClient.getTickets(params);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format, ...params } = parseToolArgs(getTicketsSchema, args);
+        const result = await whmcsClient.getTickets(params as GetTicketsParams);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       case 'whmcs_get_ticket': {
-        const params = args as GetTicketParams;
-        const result = await whmcsClient.getTicket(params);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format, ...params } = parseToolArgs(getTicketSchema, args);
+        const result = await whmcsClient.getTicket(params as GetTicketParams);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       case 'whmcs_open_ticket': {
-        const params = args as unknown as OpenTicketParams;
-        const result = await whmcsClient.openTicket(params);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format, ...params } = parseToolArgs(openTicketSchema, args);
+        const result = await whmcsClient.openTicket(params as OpenTicketParams);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       case 'whmcs_add_ticket_reply': {
-        const params = args as unknown as AddTicketReplyParams;
-        const result = await whmcsClient.addTicketReply(params);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format, ...params } = parseToolArgs(addTicketReplySchema, args);
+        const result = await whmcsClient.addTicketReply(params as AddTicketReplyParams);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       case 'whmcs_update_ticket': {
-        const params = args as unknown as UpdateTicketParams;
-        const result = await whmcsClient.updateTicket(params);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format, ...params } = parseToolArgs(updateTicketSchema, args);
+        const result = await whmcsClient.updateTicket(params as UpdateTicketParams);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       // Support Tools
       case 'whmcs_get_support_departments': {
-        const params = args as GetSupportDepartmentsParams;
-        const result = await whmcsClient.getSupportDepartments(params);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format, ...params } = parseToolArgs(getSupportDepartmentsSchema, args);
+        const result = await whmcsClient.getSupportDepartments(params as GetSupportDepartmentsParams);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       case 'whmcs_get_support_statuses': {
-        const params = args as GetSupportStatusesParams;
-        const result = await whmcsClient.getSupportStatuses(params);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format, ...params } = parseToolArgs(getSupportStatusesSchema, args);
+        const result = await whmcsClient.getSupportStatuses(params as GetSupportStatusesParams);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       case 'whmcs_get_ticket_counts': {
-        const params = args as GetTicketCountsParams;
-        const result = await whmcsClient.getTicketCounts(params);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format, ...params } = parseToolArgs(getTicketCountsSchema, args);
+        const result = await whmcsClient.getTicketCounts(params as GetTicketCountsParams);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       // Client Tools
       case 'whmcs_get_clients': {
-        const params = args as GetClientsParams;
-        const result = await whmcsClient.getClients(params);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format, ...params } = parseToolArgs(getClientsSchema, args);
+        const result = await whmcsClient.getClients(params as GetClientsParams);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       case 'whmcs_get_clients_details': {
-        const params = args as GetClientsDetailsParams;
-        const result = await whmcsClient.getClientsDetails(params);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format, ...params } = parseToolArgs(getClientsDetailsSchema, args);
+        const result = await whmcsClient.getClientsDetails(params as GetClientsDetailsParams);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       // Product Tools
       case 'whmcs_get_products': {
-        const params = args as GetProductsParams;
-        const result = await whmcsClient.getProducts(params);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format, ...params } = parseToolArgs(getProductsSchema, args);
+        const result = await whmcsClient.getProducts(params as GetProductsParams);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       // Order Tools
       case 'whmcs_get_orders': {
-        const params = args as GetOrdersParams;
-        const result = await whmcsClient.getOrders(params);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format, ...params } = parseToolArgs(getOrdersSchema, args);
+        const result = await whmcsClient.getOrders(params as GetOrdersParams);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       // Invoice Tools
       case 'whmcs_get_invoices': {
-        const params = args as GetInvoicesParams;
-        const result = await whmcsClient.getInvoices(params);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format, ...params } = parseToolArgs(getInvoicesSchema, args);
+        const result = await whmcsClient.getInvoices(params as GetInvoicesParams);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       // Extended Client Tools
       case 'whmcs_get_clients_products': {
-        const params = args as GetClientsProductsParams;
-        const result = await whmcsClient.getClientsProducts(params);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format, ...params } = parseToolArgs(getClientsProductsSchema, args);
+        const result = await whmcsClient.getClientsProducts(params as GetClientsProductsParams);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       case 'whmcs_get_clients_domains': {
-        const params = args as GetClientsDomainsParams;
-        const result = await whmcsClient.getClientsDomains(params);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format, ...params } = parseToolArgs(getClientsDomainsSchema, args);
+        const result = await whmcsClient.getClientsDomains(params as GetClientsDomainsParams);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       // System Tools
       case 'whmcs_get_activity_log': {
-        const params = args as GetActivityLogParams;
-        const result = await whmcsClient.getActivityLog(params);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format, ...params } = parseToolArgs(getActivityLogSchema, args);
+        const result = await whmcsClient.getActivityLog(params as GetActivityLogParams);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       case 'whmcs_get_stats': {
-        const params = args as GetStatsParams;
-        const result = await whmcsClient.getStats(params);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format, ...params } = parseToolArgs(getStatsSchema, args);
+        const result = await whmcsClient.getStats(params as GetStatsParams);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       case 'whmcs_get_currencies': {
         const result = await whmcsClient.getCurrencies();
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format } = parseToolArgs(getCurrenciesSchema, args);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       case 'whmcs_get_payment_methods': {
         const result = await whmcsClient.getPaymentMethods();
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format } = parseToolArgs(getPaymentMethodsSchema, args);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       case 'whmcs_get_admin_users': {
-        const params = args as GetAdminUsersParams;
-        const result = await whmcsClient.getAdminUsers(params);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format, ...params } = parseToolArgs(getAdminUsersSchema, args);
+        const result = await whmcsClient.getAdminUsers(params as GetAdminUsersParams);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       case 'whmcs_get_contacts': {
-        const params = args as GetContactsParams;
-        const result = await whmcsClient.getContacts(params);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format, ...params } = parseToolArgs(getContactsSchema, args);
+        const result = await whmcsClient.getContacts(params as GetContactsParams);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       case 'whmcs_get_emails': {
-        const params = args as unknown as GetEmailsParams;
-        const result = await whmcsClient.getEmails(params);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format, ...params } = parseToolArgs(getEmailsSchema, args);
+        const result = await whmcsClient.getEmails(params as GetEmailsParams);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       // Custom Combined Tools
       case 'whmcs_get_unpaid_invoices_detailed': {
         const result = await whmcsClient.getUnpaidInvoicesDetailed();
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format } = parseToolArgs(getUnpaidInvoicesDetailedSchema, args);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       case 'whmcs_get_all_unpaid_invoices_complete': {
-        const params = args as { limit?: number };
+        const { response_format, ...params } = parseToolArgs(getAllUnpaidInvoicesCompleteSchema, args);
         const result = await whmcsClient.getAllUnpaidInvoicesComplete(params.limit || 1000);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       // Service Management Tools
       case 'whmcs_module_suspend': {
-        const params = args as ModuleSuspendParams;
-        const result = await whmcsClient.moduleSuspend(params);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format, ...params } = parseToolArgs(moduleSuspendSchema, args);
+        const result = await whmcsClient.moduleSuspend(params as ModuleSuspendParams);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       case 'whmcs_module_unsuspend': {
-        const params = args as ModuleCommandParams;
-        const result = await whmcsClient.moduleUnsuspend(params);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format, ...params } = parseToolArgs(moduleCommandSchema, args);
+        const result = await whmcsClient.moduleUnsuspend(params as ModuleCommandParams);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       case 'whmcs_module_terminate': {
-        const params = args as ModuleCommandParams;
-        const result = await whmcsClient.moduleTerminate(params);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format, ...params } = parseToolArgs(moduleCommandSchema, args);
+        const result = await whmcsClient.moduleTerminate(params as ModuleCommandParams);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       case 'whmcs_module_create': {
-        const params = args as ModuleCommandParams;
-        const result = await whmcsClient.moduleCreate(params);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format, ...params } = parseToolArgs(moduleCommandSchema, args);
+        const result = await whmcsClient.moduleCreate(params as ModuleCommandParams);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       // Order Management Tools
       case 'whmcs_accept_order': {
-        const params = args as AcceptOrderParams;
-        const result = await whmcsClient.acceptOrder(params);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format, ...params } = parseToolArgs(acceptOrderSchema, args);
+        const result = await whmcsClient.acceptOrder(params as AcceptOrderParams);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       case 'whmcs_cancel_order': {
-        const params = args as CancelOrderParams;
-        const result = await whmcsClient.cancelOrder(params);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format, ...params } = parseToolArgs(cancelOrderSchema, args);
+        const result = await whmcsClient.cancelOrder(params as CancelOrderParams);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       case 'whmcs_delete_order': {
-        const params = args as DeleteOrderParams;
-        const result = await whmcsClient.deleteOrder(params);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format, ...params } = parseToolArgs(deleteOrderSchema, args);
+        const result = await whmcsClient.deleteOrder(params as DeleteOrderParams);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       case 'whmcs_pending_order': {
-        const params = args as PendingOrderParams;
-        const result = await whmcsClient.pendingOrder(params);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        const { response_format, ...params } = parseToolArgs(pendingOrderSchema, args);
+        const result = await whmcsClient.pendingOrder(params as PendingOrderParams);
+        return formatToolResponse(toolTitle, response_format, { data: result });
       }
 
       default:
