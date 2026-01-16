@@ -762,6 +762,17 @@ export interface GetEmailsResponse extends WHMCSBaseResponse {
   };
 }
 
+// Custom Combined Tool Params
+export interface GetUnpaidInvoicesDetailedParams {
+  limitstart?: number;
+  limitnum?: number;
+}
+
+export interface GetAllUnpaidInvoicesCompleteParams {
+  limit?: number;
+  offset?: number;
+}
+
 // Module Command Types (Service Management)
 export interface ModuleCommandParams {
   serviceid: number;

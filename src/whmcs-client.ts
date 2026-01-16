@@ -43,6 +43,8 @@ import type {
   GetContactsResponse,
   GetEmailsParams,
   GetEmailsResponse,
+  GetUnpaidInvoicesDetailedParams,
+  GetAllUnpaidInvoicesCompleteParams,
   ModuleCommandParams,
   ModuleSuspendParams,
   ModuleCommandResponse,
@@ -258,31 +260,44 @@ export class WHMCSClient {
 
   // Custom Combined Methods
 
-  async getAllUnpaidInvoicesComplete(limit: number = 1000): Promise<any> {
+  async getAllUnpaidInvoicesComplete(
+    options: GetAllUnpaidInvoicesCompleteParams = {}
+  ): Promise<any> {
     try {
-      console.error(`Buscando faturas não pagas (limite: ${limit})...`);
+      const limit = options.limit ?? 1000;
+      const offset = options.offset ?? 0;
+      const targetCount = offset + limit;
+
+      console.error(
+        `Buscando faturas nao pagas (offset: ${offset}, limite: ${limit})...`
+      );
       
       // Buscar todas as faturas não pagas em páginas
       const allUnpaidInvoices: any[] = [];
       const pageSize = 100; // Tamanho da página
       let currentPage = 0;
-      let totalFetched = 0;
       let hasMore = true;
+      let totalAvailable = 0;
 
       // Buscar faturas "Unpaid" e "Overdue"
       for (const status of ['Unpaid', 'Overdue']) {
         console.error(`Buscando faturas com status: ${status}`);
         currentPage = 0;
         hasMore = true;
+        let statusTotal = 0;
 
-        while (hasMore && totalFetched < limit) {
+        while (hasMore && allUnpaidInvoices.length < targetCount) {
           const invoicesResponse = await this.getInvoices({
             status,
             limitstart: currentPage * pageSize,
-            limitnum: Math.min(pageSize, limit - totalFetched)
+            limitnum: Math.min(pageSize, targetCount - allUnpaidInvoices.length)
           });
 
           const invoices = invoicesResponse.invoices?.invoice || [];
+
+          if (currentPage === 0) {
+            statusTotal = Number(invoicesResponse.totalresults || invoices.length);
+          }
           
           if (invoices.length === 0) {
             hasMore = false;
@@ -290,7 +305,6 @@ export class WHMCSClient {
           }
 
           allUnpaidInvoices.push(...invoices);
-          totalFetched += invoices.length;
           currentPage++;
 
           // Se retornou menos que o pageSize, não há mais páginas
@@ -298,19 +312,26 @@ export class WHMCSClient {
             hasMore = false;
           }
         }
+
+        totalAvailable += statusTotal;
       }
 
+      const sliceStart = Math.min(offset, allUnpaidInvoices.length);
+      const sliceEnd = Math.min(offset + limit, allUnpaidInvoices.length);
+      const pagedInvoices = allUnpaidInvoices.slice(sliceStart, sliceEnd);
+
       console.error(`Total de faturas encontradas: ${allUnpaidInvoices.length}`);
+      console.error(`Total de faturas retornadas: ${pagedInvoices.length}`);
 
       // Para cada fatura, buscar detalhes completos
       const detailedInvoices = [];
       let processed = 0;
 
-      for (const invoice of allUnpaidInvoices) {
+      for (const invoice of pagedInvoices) {
         try {
           processed++;
-          if (processed % 10 === 0) {
-            console.error(`Processando fatura ${processed}/${allUnpaidInvoices.length}...`);
+          if (processed % 10 === 0 && pagedInvoices.length > 0) {
+            console.error(`Processando fatura ${processed}/${pagedInvoices.length}...`);
           }
 
           // Buscar detalhes do cliente
@@ -407,14 +428,15 @@ export class WHMCSClient {
       console.error(`Processamento concluído: ${detailedInvoices.length} linhas geradas`);
 
       // Calcular totais
-      const totalAmount = allUnpaidInvoices.reduce((sum, inv) => {
+      const totalAmount = pagedInvoices.reduce((sum, inv) => {
         return sum + parseFloat(inv.total || '0');
       }, 0);
 
       return {
         result: 'success',
         summary: {
-          total_unpaid_invoices: allUnpaidInvoices.length,
+          total_unpaid_invoices: totalAvailable || allUnpaidInvoices.length,
+          returned_invoices: pagedInvoices.length,
           total_detail_lines: detailedInvoices.length,
           total_amount_unpaid: `R$ ${totalAmount.toFixed(2)}`,
           processed_at: new Date().toISOString()
@@ -446,20 +468,30 @@ export class WHMCSClient {
     }
   }
 
-  async getUnpaidInvoicesDetailed(): Promise<any> {
+  async getUnpaidInvoicesDetailed(
+    params: GetUnpaidInvoicesDetailedParams = {}
+  ): Promise<any> {
+    const limitstart = params.limitstart ?? 0;
+    const limitnum = params.limitnum ?? 20;
+    const targetCount = limitstart + limitnum;
+
     // Get all unpaid and overdue invoices
-    const unpaidInvoices = await this.getInvoices({ status: 'Unpaid', limitnum: 10 });
-    const overdueInvoices = await this.getInvoices({ status: 'Overdue', limitnum: 10 });
+    const unpaidInvoices = await this.getInvoices({ status: 'Unpaid', limitnum: targetCount });
+    const overdueInvoices = await this.getInvoices({ status: 'Overdue', limitnum: targetCount });
+    const totalAvailable =
+      Number(unpaidInvoices.totalresults || unpaidInvoices.invoices?.invoice?.length || 0) +
+      Number(overdueInvoices.totalresults || overdueInvoices.invoices?.invoice?.length || 0);
 
     // Combine both invoice lists
     const allUnpaidInvoices = [
       ...(unpaidInvoices.invoices?.invoice || []),
       ...(overdueInvoices.invoices?.invoice || [])
     ];
+    const pagedInvoices = allUnpaidInvoices.slice(limitstart, limitstart + limitnum);
 
     // For each invoice, get client details and products
     const detailedInvoices = await Promise.all(
-      allUnpaidInvoices.map(async (invoice) => {
+      pagedInvoices.map(async (invoice) => {
         try {
           // Get client details
           const clientDetails = await this.getClientsDetails({
@@ -524,7 +556,8 @@ export class WHMCSClient {
 
     return {
       result: 'success',
-      total_unpaid_invoices: detailedInvoices.length,
+      total_unpaid_invoices: totalAvailable,
+      returned_invoices: detailedInvoices.length,
       invoices: detailedInvoices,
     };
   }
