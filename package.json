@@ -1,10 +1,10 @@
 {
-  "name": "whmcs-mcp",
+  "name": "whmcs-mcp-server",
   "version": "0.1.0",
-  "description": "MCP server for WHMCS API integration - Ticket Management",
+  "description": "MCP server for WHMCS API integration",
   "type": "module",
   "bin": {
-    "whmcs-mcp": "./build/index.js"
+    "whmcs-mcp-server": "./build/index.js"
   },
   "scripts": {
     "build": "tsc",

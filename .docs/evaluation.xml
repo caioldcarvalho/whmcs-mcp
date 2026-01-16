@@ -1,0 +1,42 @@
+<evaluation>
+  <qa_pair>
+    <question>Which tool lists support departments?</question>
+    <answer>whmcs_get_support_departments</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Which tool returns detailed ticket information including replies and notes?</question>
+    <answer>whmcs_get_ticket</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Which tool suspends a client service or product?</question>
+    <answer>whmcs_module_suspend</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Which tool sets an order back to Pending status?</question>
+    <answer>whmcs_pending_order</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>What is the maximum allowed limit for whmcs_get_all_unpaid_invoices_complete?</question>
+    <answer>5000</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Which tool lists unpaid invoices with detailed client and product information?</question>
+    <answer>whmcs_get_unpaid_invoices_detailed</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Which tool lists system activity log entries?</question>
+    <answer>whmcs_get_activity_log</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Which tool lists administrator users?</question>
+    <answer>whmcs_get_admin_users</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>What response_format values are accepted by the tools?</question>
+    <answer>markdown, json</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Which tool lists invoices with filters and sorting?</question>
+    <answer>whmcs_get_invoices</answer>
+  </qa_pair>
+</evaluation>

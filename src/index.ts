@@ -1376,7 +1376,7 @@ const pendingOrderSchema = withResponseFormat({
 // Create server instance
 const server = new Server(
   {
-    name: 'whmcs-mcp',
+    name: 'whmcs-mcp-server',
     version: '0.1.0',
   },
   {
