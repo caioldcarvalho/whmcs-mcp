@@ -1,260 +1,260 @@
 # WHMCS MCP Server
 
-Servidor MCP (Model Context Protocol) para integração completa com a API do WHMCS.
+MCP (Model Context Protocol) server for full integration with the WHMCS API.
 
-## Características
+## Features
 
-### Tickets e Suporte
-- ✅ Listar tickets com filtros avançados
-- ✅ Visualizar detalhes completos de tickets (incluindo respostas e notas)
-- ✅ Criar novos tickets
-- ✅ Adicionar respostas a tickets
-- ✅ Atualizar propriedades de tickets
-- ✅ Listar departamentos de suporte
-- ✅ Visualizar status de tickets com contadores
-- ✅ Estatísticas completas de tickets
+### Tickets and Support
+- ✅ List tickets with advanced filters
+- ✅ View full ticket details (including replies and notes)
+- ✅ Create new tickets
+- ✅ Add replies to tickets
+- ✅ Update ticket properties
+- ✅ List support departments
+- ✅ View ticket statuses with counts
+- ✅ Full ticket statistics
 
-### Clientes
-- ✅ Listar clientes com filtros e paginação
-- ✅ Visualizar detalhes completos de clientes (com estatísticas)
+### Clients
+- ✅ List clients with filters and pagination
+- ✅ View full client details (with stats)
 
-### Produtos e Pedidos
-- ✅ Listar produtos/serviços disponíveis
-- ✅ Listar pedidos com filtros
+### Products and Orders
+- ✅ List available products/services
+- ✅ List orders with filters
 
-### Faturas
-- ✅ Listar faturas com filtros e ordenação
+### Invoices
+- ✅ List invoices with filters and sorting
 
-### Geral
-- 🔒 Autenticação segura via API credentials
-- 📝 Totalmente tipado com TypeScript
-- 🚀 32 tools MCP implementadas e testadas
+### General
+- 🔒 Secure authentication via API credentials
+- 📝 Fully typed with TypeScript
+- 🚀 32 MCP tools implemented and tested
 
-## Tools Disponíveis (32)
+## Available Tools (32)
 
 ### Tickets
-1. **whmcs_get_tickets** - Lista tickets com filtros
-2. **whmcs_get_ticket** - Ver ticket específico com todas as respostas
-3. **whmcs_get_ticket_counts** - Estatísticas e contadores de tickets
-4. **whmcs_open_ticket** - Criar novo ticket
-5. **whmcs_add_ticket_reply** - Responder ticket
-6. **whmcs_update_ticket** - Atualizar propriedades
+1. **whmcs_get_tickets** - List tickets with filters
+2. **whmcs_get_ticket** - View a specific ticket with all replies
+3. **whmcs_get_ticket_counts** - Ticket statistics and counts
+4. **whmcs_open_ticket** - Create a new ticket
+5. **whmcs_add_ticket_reply** - Reply to a ticket
+6. **whmcs_update_ticket** - Update ticket properties
 
-### Suporte
-7. **whmcs_get_support_departments** - Listar departamentos
-8. **whmcs_get_support_statuses** - Ver status com contadores
+### Support
+7. **whmcs_get_support_departments** - List departments
+8. **whmcs_get_support_statuses** - View statuses with counts
 
-### Clientes
-9. **whmcs_get_clients** - Listar clientes
-10. **whmcs_get_clients_details** - Detalhes completos de um cliente
-11. **whmcs_get_clients_products** - Produtos/serviços de um cliente
-12. **whmcs_get_clients_domains** - Domínios de um cliente
-13. **whmcs_get_contacts** - Contatos de clientes
-14. **whmcs_get_emails** - Histórico de emails enviados
+### Clients
+9. **whmcs_get_clients** - List clients
+10. **whmcs_get_clients_details** - Full client details
+11. **whmcs_get_clients_products** - Client products/services
+12. **whmcs_get_clients_domains** - Client domains
+13. **whmcs_get_contacts** - Client contacts
+14. **whmcs_get_emails** - Email history
 
-### Produtos, Pedidos e Faturas
-15. **whmcs_get_products** - Listar produtos/serviços
-16. **whmcs_get_orders** - Listar pedidos
-17. **whmcs_get_invoices** - Listar faturas
+### Products, Orders, and Invoices
+15. **whmcs_get_products** - List products/services
+16. **whmcs_get_orders** - List orders
+17. **whmcs_get_invoices** - List invoices
 
-### Sistema e Administração
-18. **whmcs_get_activity_log** - Log de atividades (116k+ entradas)
-19. **whmcs_get_stats** - Estatísticas completas (receitas, pedidos, tickets)
-20. **whmcs_get_currencies** - Moedas configuradas
-21. **whmcs_get_payment_methods** - Métodos de pagamento ativos
-22. **whmcs_get_admin_users** - Usuários administradores
+### System and Administration
+18. **whmcs_get_activity_log** - Activity log (116k+ entries)
+19. **whmcs_get_stats** - Full statistics (revenue, orders, tickets)
+20. **whmcs_get_currencies** - Configured currencies
+21. **whmcs_get_payment_methods** - Active payment methods
+22. **whmcs_get_admin_users** - Admin users
 
-### Faturas Combinadas
-23. **whmcs_get_unpaid_invoices_detailed** - Faturas não pagas com detalhes de cliente e produtos
-24. **whmcs_get_all_unpaid_invoices_complete** - Todas as faturas não pagas com detalhes completos
+### Combined Invoices
+23. **whmcs_get_unpaid_invoices_detailed** - Unpaid invoices with client and product details
+24. **whmcs_get_all_unpaid_invoices_complete** - All unpaid invoices with full details
 
-### Gerenciamento de Serviços
-25. **whmcs_module_suspend** - Suspender serviço
-26. **whmcs_module_unsuspend** - Reativar serviço suspenso
-27. **whmcs_module_terminate** - Encerrar serviço permanentemente
-28. **whmcs_module_create** - Provisionar serviço
+### Service Management
+25. **whmcs_module_suspend** - Suspend service
+26. **whmcs_module_unsuspend** - Unsuspend service
+27. **whmcs_module_terminate** - Terminate service permanently
+28. **whmcs_module_create** - Provision service
 
-### Gerenciamento de Pedidos
-29. **whmcs_accept_order** - Aceitar e ativar pedido
-30. **whmcs_cancel_order** - Cancelar pedido
-31. **whmcs_delete_order** - Excluir pedido permanentemente
-32. **whmcs_pending_order** - Definir pedido como pendente
+### Order Management
+29. **whmcs_accept_order** - Accept and activate order
+30. **whmcs_cancel_order** - Cancel order
+31. **whmcs_delete_order** - Delete order permanently
+32. **whmcs_pending_order** - Set order as pending
 
-## Instalação Rápida
+## Quick Install
 
 ```bash
-# Instalar dependências
+# Install dependencies
 npm install
 
-# Compilar
+# Build
 npm run build
 
-# Configurar .env com suas credenciais
+# Configure .env with your credentials
 ```
 
-## Configuração no Claude Code
+## Claude Code Configuration
 
 ```bash
-# Adicionar MCP ao Claude Code
-claude mcp add --transport stdio whmcs -- node /caminho/absoluto/whmcs-mcp/build/index.js
+# Add MCP to Claude Code
+claude mcp add --transport stdio whmcs -- node /absolute/path/whmcs-mcp/build/index.js
 
-# Verificar
+# Verify
 claude mcp list
 ```
 
-Ou configure manualmente em `~/.config/Claude/config.json`:
+Or configure manually in `~/.config/Claude/config.json`:
 
 ```json
 {
   "mcpServers": {
     "whmcs": {
       "command": "node",
-      "args": ["/caminho/absoluto/whmcs-mcp/build/index.js"],
+      "args": ["/absolute/path/whmcs-mcp/build/index.js"],
       "env": {
-        "WHMCS_IDENTIFIER": "seu_identifier",
-        "WHMCS_SECRET": "seu_secret",
-        "WHMCS_API_URL": "https://seu-whmcs.com/includes/api.php"
+        "WHMCS_IDENTIFIER": "your_identifier",
+        "WHMCS_SECRET": "your_secret",
+        "WHMCS_API_URL": "https://your-whmcs.com/includes/api.php"
       }
     }
   }
 }
 ```
 
-## Documentação
+## Documentation
 
-- [📋 Roadmap](.docs/ROADMAP.md) - Plano de desenvolvimento
-- [📚 API Reference](.docs/API_REFERENCE.md) - Documentação completa da API WHMCS
-- [📝 API Functions](.docs/API_FUNCTIONS.md) - Lista de todas as funções GET implementadas
-- [⚙️ Instalação](.docs/INSTALACAO.md) - Guia detalhado de instalação
-- [🔧 Troubleshooting](.docs/TROUBLESHOOTING.md) - Solução de problemas
-- [🤔 Como Funciona](.docs/COMO_FUNCIONA.md) - Explicação da arquitetura
-- [✅ Evaluation](.docs/evaluation.xml) - Conjunto de perguntas para avaliação
+- [📋 Roadmap](.docs/ROADMAP.md) - Development plan
+- [📚 API Reference](.docs/API_REFERENCE.md) - Full WHMCS API documentation
+- [📝 API Functions](.docs/API_FUNCTIONS.md) - List of implemented GET functions
+- [⚙️ Installation](.docs/INSTALACAO.md) - Detailed installation guide
+- [🔧 Troubleshooting](.docs/TROUBLESHOOTING.md) - Troubleshooting guide
+- [🤔 How It Works](.docs/COMO_FUNCIONA.md) - Architecture explanation
+- [✅ Evaluation](.docs/evaluation.xml) - Evaluation question set
 
-## Exemplo de Uso
+## Usage Examples
 
-No Claude Code, você pode fazer perguntas como:
+In Claude Code, you can ask questions like:
 
 **Tickets:**
-- "Liste os últimos 10 tickets abertos"
-- "Mostre os detalhes do ticket #123456"
-- "Quantos tickets estão aguardando resposta?"
-- "Quais são os departamentos de suporte disponíveis?"
+- "List the last 10 open tickets"
+- "Show details for ticket #123456"
+- "How many tickets are awaiting response?"
+- "Which support departments are available?"
 
-**Clientes:**
-- "Liste os últimos 5 clientes ativos"
-- "Mostre os detalhes do cliente ID 123"
-- "Quantos clientes temos no total?"
+**Clients:**
+- "List the last 5 active clients"
+- "Show details for client ID 123"
+- "How many clients do we have total?"
 
-**Produtos:**
-- "Liste todos os produtos disponíveis"
-- "Quais produtos do grupo 5?"
+**Products:**
+- "List all available products"
+- "Which products are in group 5?"
 
-**Pedidos e Faturas:**
-- "Liste os últimos 10 pedidos"
-- "Mostre as faturas em aberto"
+**Orders and Invoices:**
+- "List the last 10 orders"
+- "Show overdue invoices"
 
-## Tecnologias
+## Technologies
 
 - TypeScript
 - MCP SDK (@modelcontextprotocol/sdk)
 - Axios (HTTP client)
 - WHMCS API v1
 
-## Estrutura do Projeto
+## Project Structure
 
 ```
 whmcs-mcp/
-├── .docs/              # Documentação completa
+├── .docs/              # Full documentation
 │   ├── ROADMAP.md
 │   ├── API_REFERENCE.md
 │   ├── API_FUNCTIONS.md
 │   ├── INSTALACAO.md
 │   ├── TROUBLESHOOTING.md
 │   └── COMO_FUNCIONA.md
-├── src/                # Código-fonte TypeScript
-│   ├── index.ts        # Servidor MCP (32 tools)
-│   ├── whmcs-client.ts # Cliente API (32 métodos)
-│   └── types.ts        # Tipos TypeScript completos
-├── build/              # Código compilado
-├── .env                # Configuração
+├── src/                # TypeScript source code
+│   ├── index.ts        # MCP server (32 tools)
+│   ├── whmcs-client.ts # API client (32 methods)
+│   └── types.ts        # TypeScript types
+├── build/              # Compiled output
+├── .env                # Configuration
 └── package.json
 ```
 
-## Desenvolvimento
+## Development
 
 ```bash
-# Modo watch (recompila automaticamente)
+# Watch mode (auto rebuild)
 npm run dev
 
-# Build manual
+# Manual build
 npm run build
 
-# Testar cliente diretamente
+# Test client directly
 node -e "import('./build/whmcs-client.js').then(async ({WHMCSClient}) => { ... })"
 ```
 
-## Requisitos
+## Requirements
 
 - Node.js >= 18
-- Conta WHMCS com API habilitada
-- API Identifier e Secret do WHMCS
-- IP autorizado na API do WHMCS
+- WHMCS account with API enabled
+- WHMCS API Identifier and Secret
+- IP authorized in the WHMCS API
 
-## Status do Projeto
+## Project Status
 
-- ✅ **32 tools MCP implementadas e testadas**
-- ✅ Cliente TypeScript completo
-- ✅ Documentação completa
-- ✅ Testado em produção com dados reais
-- ✅ Cobertura completa dos principais endpoints WHMCS
+- ✅ **32 MCP tools implemented and tested**
+- ✅ Complete TypeScript client
+- ✅ Complete documentation
+- ✅ Tested in production with real data
+- ✅ Full coverage of main WHMCS endpoints
 
-## Implementações Completas
+## Completed Implementations
 
-### ✅ Tickets e Suporte (8 tools)
+### ✅ Tickets and Support (8 tools)
 - GetTickets, GetTicket, GetTicketCounts
 - OpenTicket, AddTicketReply, UpdateTicket
 - GetSupportDepartments, GetSupportStatuses
 
-### ✅ Clientes (6 tools)
+### ✅ Clients (6 tools)
 - GetClients, GetClientsDetails
 - GetClientsProducts, GetClientsDomains
 - GetContacts, GetEmails
 
-### ✅ Produtos e Vendas (3 tools)
+### ✅ Products and Sales (3 tools)
 - GetProducts, GetOrders, GetInvoices
 
-### ✅ Sistema e Admin (5 tools)
-- GetActivityLog (116k+ entradas testadas)
-- GetStats (receitas, pedidos, tickets)
+### ✅ System and Admin (5 tools)
+- GetActivityLog (116k+ entries tested)
+- GetStats (revenue, orders, tickets)
 - GetCurrencies, GetPaymentMethods
 - GetAdminUsers
 
-### ✅ Faturas Combinadas (2 tools)
+### ✅ Combined Invoices (2 tools)
 - GetUnpaidInvoicesDetailed, GetAllUnpaidInvoicesComplete
 
-### ✅ Gestão de Serviços (4 tools)
+### ✅ Service Management (4 tools)
 - ModuleSuspend, ModuleUnsuspend, ModuleTerminate, ModuleCreate
 
-### ✅ Gestão de Pedidos (4 tools)
+### ✅ Order Management (4 tools)
 - AcceptOrder, CancelOrder, DeleteOrder, PendingOrder
 
-## Próximas Implementações Sugeridas
+## Next Suggested Implementations
 
-Ver [API_FUNCTIONS.md](.docs/API_FUNCTIONS.md) para lista completa de funções disponíveis.
+See [API_FUNCTIONS.md](.docs/API_FUNCTIONS.md) for the full list of available functions.
 
-### Funções GET Adicionais
+### Additional GET Functions
 - GetTicketNotes, GetTicketAttachment
 - GetAnnouncements, GetPromotions
 - GetServers, GetProjects
 
-### Funções de Ação
+### Action Functions
 - AddTicketNote, DeleteTicket, MergeTicket
 - ModuleSuspend, ModuleUnsuspend, ModuleTerminate
 
-## Licença
+## License
 
 MIT
 
-## Autor
+## Author
 
-Desenvolvido para integração com WHMCS via Model Context Protocol.
+Built for WHMCS integration via Model Context Protocol.
