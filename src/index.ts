@@ -33,6 +33,8 @@ import type {
   GetEmailsParams,
   GetUnpaidInvoicesDetailedParams,
   GetAllUnpaidInvoicesCompleteParams,
+  FindInvoiceGapsParams,
+  ListClientsWithPendingInvoicesParams,
   ModuleCommandParams,
   ModuleSuspendParams,
   AcceptOrderParams,
@@ -324,6 +326,55 @@ function renderMarkdown(toolName: string, title: string, output: ToolOutput): st
         String(email.failed ?? ''),
       ]);
       addTable(['ID', 'Subject', 'Date', 'Failed'], rows);
+      break;
+    }
+    case 'whmcs_find_invoice_gaps': {
+      const summary = data?.summary as
+        | { months?: number; window_start?: string; window_end?: string; clients_with_gaps?: number }
+        | undefined;
+      if (summary) {
+        lines.push('');
+        lines.push(
+          `Window: ${summary.window_start ?? '?'} to ${summary.window_end ?? '?'}, months: ${
+            summary.months ?? '?'
+          }`
+        );
+        lines.push(`Clients with gaps: ${summary.clients_with_gaps ?? 0}`);
+      }
+      const clients = getArray(['clients']) ?? [];
+      const rows = clients.map((client) => [
+        String(client.client_id ?? ''),
+        String(client.name ?? ''),
+        String(client.email ?? ''),
+        String(client.phone ?? ''),
+        Array.isArray(client.missing_months) ? client.missing_months.join(', ') : '',
+      ]);
+      addTable(['Client ID', 'Name', 'Email', 'Phone', 'Missing Months'], rows);
+      break;
+    }
+    case 'whmcs_list_clients_with_pending_invoices': {
+      const summary = data?.summary as
+        | { months?: number; window_start?: string; window_end?: string; clients_with_pending?: number }
+        | undefined;
+      if (summary) {
+        lines.push('');
+        lines.push(
+          `Window: ${summary.window_start ?? '?'} to ${summary.window_end ?? '?'}, months: ${
+            summary.months ?? '?'
+          }`
+        );
+        lines.push(`Clients with pending invoices: ${summary.clients_with_pending ?? 0}`);
+      }
+      const clients = getArray(['clients']) ?? [];
+      const rows = clients.map((client) => [
+        String(client.client_id ?? ''),
+        String(client.name ?? ''),
+        String(client.email ?? ''),
+        String(client.phone ?? ''),
+        String(client.pending_invoices ?? ''),
+        String(client.total_due ?? ''),
+      ]);
+      addTable(['Client ID', 'Name', 'Email', 'Phone', 'Pending', 'Total Due'], rows);
       break;
     }
     default:
@@ -844,6 +895,67 @@ const rawTools: Tool[] = [
     },
     annotations: {
       title: 'List Invoices',
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+  },
+  // Billing Analysis Tools
+  {
+    name: 'whmcs_find_invoice_gaps',
+    description:
+      'Find missing invoice months per client over a recent window. Optionally restricts to active monthly services.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        months: {
+          type: 'number',
+          description: 'Number of months to check (default: 6)',
+          minimum: 1,
+          maximum: 24,
+        },
+        only_monthly_active: {
+          type: 'boolean',
+          description: 'Only consider clients with active monthly services',
+        },
+        include_statuses: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Invoice statuses to include (default: Paid, Unpaid, Overdue)',
+        },
+        exclude_statuses: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Invoice statuses to exclude (default: Cancelled)',
+        },
+      },
+    },
+    annotations: {
+      title: 'Find Invoice Gaps',
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+  },
+  {
+    name: 'whmcs_list_clients_with_pending_invoices',
+    description:
+      'List clients with unpaid or overdue invoices over a recent window, including totals and contact info.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        months: {
+          type: 'number',
+          description: 'Number of months to check (default: 6)',
+          minimum: 1,
+          maximum: 24,
+        },
+      },
+    },
+    annotations: {
+      title: 'List Clients With Pending Invoices',
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
@@ -1437,6 +1549,17 @@ const getInvoicesSchema = withResponseFormat({
   order: z.enum(['asc', 'desc']).optional(),
 });
 
+const findInvoiceGapsSchema = withResponseFormat({
+  months: zPositiveInt.max(24).optional(),
+  only_monthly_active: z.boolean().optional(),
+  include_statuses: z.array(z.string().min(1)).optional(),
+  exclude_statuses: z.array(z.string().min(1)).optional(),
+});
+
+const listClientsWithPendingInvoicesSchema = withResponseFormat({
+  months: zPositiveInt.max(24).optional(),
+});
+
 const getClientsProductsSchema = withResponseFormat({
   limitstart: zNonNegativeInt.optional(),
   limitnum: zPositiveInt.optional(),
@@ -1711,6 +1834,23 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           responseFormat,
           wrapData(result, pagination)
         );
+      }
+
+      case 'whmcs_find_invoice_gaps': {
+        const { response_format: responseFormat = 'markdown', ...params } = parseToolArgs(findInvoiceGapsSchema, args);
+        const result = await whmcsClient.findInvoiceGaps(params as FindInvoiceGapsParams);
+        return formatToolResponse(name, toolTitle, responseFormat, { data: result });
+      }
+
+      case 'whmcs_list_clients_with_pending_invoices': {
+        const { response_format: responseFormat = 'markdown', ...params } = parseToolArgs(
+          listClientsWithPendingInvoicesSchema,
+          args
+        );
+        const result = await whmcsClient.listClientsWithPendingInvoices(
+          params as ListClientsWithPendingInvoicesParams
+        );
+        return formatToolResponse(name, toolTitle, responseFormat, { data: result });
       }
 
       // Extended Client Tools

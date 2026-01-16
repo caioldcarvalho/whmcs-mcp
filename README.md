@@ -28,9 +28,9 @@ MCP (Model Context Protocol) server for full integration with the WHMCS API.
 ### General
 - 🔒 Secure authentication via API credentials
 - 📝 Fully typed with TypeScript
-- 🚀 32 MCP tools implemented and tested
+- 🚀 34 MCP tools implemented and tested
 
-## Available Tools (32)
+## Available Tools (34)
 
 ### Tickets
 1. **whmcs_get_tickets** - List tickets with filters
@@ -57,28 +57,32 @@ MCP (Model Context Protocol) server for full integration with the WHMCS API.
 16. **whmcs_get_orders** - List orders
 17. **whmcs_get_invoices** - List invoices
 
+### Billing Analysis
+18. **whmcs_find_invoice_gaps** - Find missing invoice months per client
+19. **whmcs_list_clients_with_pending_invoices** - List clients with unpaid/overdue invoices
+
 ### System and Administration
-18. **whmcs_get_activity_log** - Activity log (116k+ entries)
-19. **whmcs_get_stats** - Full statistics (revenue, orders, tickets)
-20. **whmcs_get_currencies** - Configured currencies
-21. **whmcs_get_payment_methods** - Active payment methods
-22. **whmcs_get_admin_users** - Admin users
+20. **whmcs_get_activity_log** - Activity log (116k+ entries)
+21. **whmcs_get_stats** - Full statistics (revenue, orders, tickets)
+22. **whmcs_get_currencies** - Configured currencies
+23. **whmcs_get_payment_methods** - Active payment methods
+24. **whmcs_get_admin_users** - Admin users
 
 ### Combined Invoices
-23. **whmcs_get_unpaid_invoices_detailed** - Unpaid invoices with client and product details
-24. **whmcs_get_all_unpaid_invoices_complete** - All unpaid invoices with full details
+25. **whmcs_get_unpaid_invoices_detailed** - Unpaid invoices with client and product details
+26. **whmcs_get_all_unpaid_invoices_complete** - All unpaid invoices with full details
 
 ### Service Management
-25. **whmcs_module_suspend** - Suspend service
-26. **whmcs_module_unsuspend** - Unsuspend service
-27. **whmcs_module_terminate** - Terminate service permanently
-28. **whmcs_module_create** - Provision service
+27. **whmcs_module_suspend** - Suspend service
+28. **whmcs_module_unsuspend** - Unsuspend service
+29. **whmcs_module_terminate** - Terminate service permanently
+30. **whmcs_module_create** - Provision service
 
 ### Order Management
-29. **whmcs_accept_order** - Accept and activate order
-30. **whmcs_cancel_order** - Cancel order
-31. **whmcs_delete_order** - Delete order permanently
-32. **whmcs_pending_order** - Set order as pending
+31. **whmcs_accept_order** - Accept and activate order
+32. **whmcs_cancel_order** - Cancel order
+33. **whmcs_delete_order** - Delete order permanently
+34. **whmcs_pending_order** - Set order as pending
 
 ## Quick Install
 
@@ -172,8 +176,8 @@ whmcs-mcp/
 │   ├── TROUBLESHOOTING.md
 │   └── COMO_FUNCIONA.md
 ├── src/                # TypeScript source code
-│   ├── index.ts        # MCP server (32 tools)
-│   ├── whmcs-client.ts # API client (32 methods)
+│   ├── index.ts        # MCP server (34 tools)
+│   ├── whmcs-client.ts # API client (34 methods)
 │   └── types.ts        # TypeScript types
 ├── build/              # Compiled output
 ├── .env                # Configuration
@@ -202,7 +206,7 @@ node -e "import('./build/whmcs-client.js').then(async ({WHMCSClient}) => { ... }
 
 ## Project Status
 
-- ✅ **32 MCP tools implemented and tested**
+- ✅ **34 MCP tools implemented and tested**
 - ✅ Complete TypeScript client
 - ✅ Complete documentation
 - ✅ Tested in production with real data
@@ -231,6 +235,9 @@ node -e "import('./build/whmcs-client.js').then(async ({WHMCSClient}) => { ... }
 
 ### ✅ Combined Invoices (2 tools)
 - GetUnpaidInvoicesDetailed, GetAllUnpaidInvoicesComplete
+
+### ✅ Billing Analysis (2 tools)
+- FindInvoiceGaps, ListClientsWithPendingInvoices
 
 ### ✅ Service Management (4 tools)
 - ModuleSuspend, ModuleUnsuspend, ModuleTerminate, ModuleCreate

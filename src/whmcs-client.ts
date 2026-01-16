@@ -5,6 +5,9 @@ import type {
   GetTicketsResponse,
   GetTicketParams,
   GetTicketResponse,
+  Invoice,
+  ClientProduct,
+  ClientDetails,
   OpenTicketParams,
   OpenTicketResponse,
   AddTicketReplyParams,
@@ -45,6 +48,12 @@ import type {
   GetEmailsResponse,
   GetUnpaidInvoicesDetailedParams,
   GetAllUnpaidInvoicesCompleteParams,
+  FindInvoiceGapsParams,
+  FindInvoiceGapsResult,
+  FindInvoiceGapsClient,
+  ListClientsWithPendingInvoicesParams,
+  ListClientsWithPendingInvoicesResult,
+  PendingInvoiceClient,
   ModuleCommandParams,
   ModuleSuspendParams,
   ModuleCommandResponse,
@@ -73,6 +82,110 @@ export class WHMCSClient {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
     });
+  }
+
+  private parseDate(dateValue: string | undefined): Date | null {
+    if (!dateValue || dateValue === '0000-00-00') return null;
+    const parsed = new Date(dateValue);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed;
+  }
+
+  private getMonthKey(dateValue: Date): string {
+    const year = dateValue.getFullYear();
+    const month = String(dateValue.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
+  }
+
+  private getMonthStart(dateValue: Date): Date {
+    return new Date(dateValue.getFullYear(), dateValue.getMonth(), 1);
+  }
+
+  private getMonthRange(months: number): { start: Date; end: Date; keys: string[] } {
+    const end = this.getMonthStart(new Date());
+    const start = new Date(end.getFullYear(), end.getMonth() - (months - 1), 1);
+    const keys: string[] = [];
+    const cursor = new Date(start.getTime());
+    while (cursor <= end) {
+      keys.push(this.getMonthKey(cursor));
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+    return { start, end, keys };
+  }
+
+  private async listInvoicesByStatusSince(status: string, startDate: Date): Promise<Invoice[]> {
+    const invoices: Invoice[] = [];
+    const pageSize = 100;
+    let page = 0;
+
+    while (true) {
+      const response = await this.getInvoices({
+        status,
+        limitstart: page * pageSize,
+        limitnum: pageSize,
+        orderby: 'date',
+        order: 'desc',
+      });
+
+      const batch = response.invoices?.invoice || [];
+      if (batch.length === 0) {
+        break;
+      }
+
+      let reachedOlder = false;
+      for (const invoice of batch) {
+        const invoiceDate = this.parseDate(invoice.date);
+        if (invoiceDate && invoiceDate < startDate) {
+          reachedOlder = true;
+          break;
+        }
+        invoices.push(invoice);
+      }
+
+      if (reachedOlder || batch.length < pageSize) {
+        break;
+      }
+      page += 1;
+    }
+
+    return invoices;
+  }
+
+  private async listInvoicesForStatuses(
+    statuses: string[],
+    startDate: Date
+  ): Promise<Invoice[]> {
+    const all: Invoice[] = [];
+    for (const status of statuses) {
+      const invoices = await this.listInvoicesByStatusSince(status, startDate);
+      all.push(...invoices);
+    }
+    return all;
+  }
+
+  private async listAllClientProducts(): Promise<ClientProduct[]> {
+    const products: ClientProduct[] = [];
+    const pageSize = 250;
+    let page = 0;
+    let total = 0;
+
+    while (true) {
+      const response = await this.getClientsProducts({
+        limitstart: page * pageSize,
+        limitnum: pageSize,
+      });
+
+      const batch = response.products?.product || [];
+      products.push(...batch);
+
+      total = Number(response.totalresults || products.length);
+      if (products.length >= total || batch.length < pageSize) {
+        break;
+      }
+      page += 1;
+    }
+
+    return products;
   }
 
   private async request<T>(action: string, params: Record<string, any> = {}): Promise<T> {
@@ -559,6 +672,167 @@ export class WHMCSClient {
       total_unpaid_invoices: totalAvailable,
       returned_invoices: detailedInvoices.length,
       invoices: detailedInvoices,
+    };
+  }
+
+  async findInvoiceGaps(params: FindInvoiceGapsParams = {}): Promise<FindInvoiceGapsResult> {
+    const months = params.months ?? 6;
+    const includeStatuses = params.include_statuses ?? ['Paid', 'Unpaid', 'Overdue'];
+    const excludeStatuses = new Set((params.exclude_statuses ?? ['Cancelled']).map((s) => s.toLowerCase()));
+    const { start, end, keys: expectedMonths } = this.getMonthRange(months);
+
+    const invoices = await this.listInvoicesForStatuses(includeStatuses, start);
+    const filteredInvoices = invoices.filter((invoice) => {
+      const status = invoice.status?.toLowerCase();
+      return status ? !excludeStatuses.has(status) : true;
+    });
+
+    const invoicesByClient = new Map<number, Invoice[]>();
+    for (const invoice of filteredInvoices) {
+      const list = invoicesByClient.get(invoice.userid) ?? [];
+      list.push(invoice);
+      invoicesByClient.set(invoice.userid, list);
+    }
+
+    let eligibleClients = new Set(invoicesByClient.keys());
+    const clientStartMonth = new Map<number, Date>();
+
+    if (params.only_monthly_active) {
+      const products = await this.listAllClientProducts();
+      const monthlyActive = products.filter(
+        (product) => product.status === 'Active' && product.billingcycle === 'Monthly'
+      );
+      eligibleClients = new Set(monthlyActive.map((product) => product.clientid));
+
+      for (const product of monthlyActive) {
+        const regDate = this.parseDate(product.regdate);
+        if (!regDate) continue;
+        const current = clientStartMonth.get(product.clientid);
+        if (!current || regDate < current) {
+          clientStartMonth.set(product.clientid, regDate);
+        }
+      }
+    }
+
+    const clientCache = new Map<number, ClientDetails>();
+    const clients: FindInvoiceGapsClient[] = [];
+
+    for (const clientId of eligibleClients) {
+      const clientInvoices = invoicesByClient.get(clientId) ?? [];
+      const presentMonths = new Set<string>();
+      let lastInvoiceDate: Date | null = null;
+
+      for (const invoice of clientInvoices) {
+        const invoiceDate = this.parseDate(invoice.date);
+        if (!invoiceDate) continue;
+        if (invoiceDate < start || invoiceDate > end) continue;
+        presentMonths.add(this.getMonthKey(invoiceDate));
+        if (!lastInvoiceDate || invoiceDate > lastInvoiceDate) {
+          lastInvoiceDate = invoiceDate;
+        }
+      }
+
+      let expected = expectedMonths;
+      const startDate = clientStartMonth.get(clientId);
+      if (startDate) {
+        const adjustedStart = this.getMonthStart(startDate);
+        expected = expectedMonths.filter((monthKey) => {
+          const [year, month] = monthKey.split('-').map(Number);
+          const value = new Date(year, month - 1, 1);
+          return value >= adjustedStart;
+        });
+      }
+
+      const missing = expected.filter((monthKey) => !presentMonths.has(monthKey));
+      if (missing.length === 0) {
+        continue;
+      }
+
+      let clientDetails = clientCache.get(clientId);
+      if (!clientDetails) {
+        const response = await this.getClientsDetails({ clientid: clientId });
+        clientDetails = response.client;
+        clientCache.set(clientId, clientDetails);
+      }
+
+      clients.push({
+        client_id: clientId,
+        name: `${clientDetails.firstname || ''} ${clientDetails.lastname || ''}`.trim(),
+        email: clientDetails.email || '',
+        phone: clientDetails.phonenumber || '',
+        missing_months: missing,
+        last_invoice_date: lastInvoiceDate ? lastInvoiceDate.toISOString().slice(0, 10) : null,
+      });
+    }
+
+    return {
+      result: 'success',
+      summary: {
+        months,
+        window_start: start.toISOString().slice(0, 10),
+        window_end: end.toISOString().slice(0, 10),
+        clients_checked: eligibleClients.size,
+        clients_with_gaps: clients.length,
+      },
+      clients,
+    };
+  }
+
+  async listClientsWithPendingInvoices(
+    params: ListClientsWithPendingInvoicesParams = {}
+  ): Promise<ListClientsWithPendingInvoicesResult> {
+    const months = params.months ?? 6;
+    const { start, end } = this.getMonthRange(months);
+    const invoices = await this.listInvoicesForStatuses(['Unpaid', 'Overdue'], start);
+
+    const clientsMap = new Map<number, PendingInvoiceClient>();
+    let totalDue = 0;
+    let totalInvoices = 0;
+
+    for (const invoice of invoices) {
+      const invoiceDate = this.parseDate(invoice.date);
+      if (!invoiceDate || invoiceDate < start || invoiceDate > end) continue;
+      const clientId = invoice.userid;
+      const amount = Number.parseFloat(invoice.balance || invoice.total || '0') || 0;
+
+      totalDue += amount;
+      totalInvoices += 1;
+
+      let client = clientsMap.get(clientId);
+      if (!client) {
+        const response = await this.getClientsDetails({ clientid: clientId });
+        const details = response.client;
+        client = {
+          client_id: clientId,
+          name: `${details.firstname || ''} ${details.lastname || ''}`.trim(),
+          email: details.email || '',
+          phone: details.phonenumber || '',
+          pending_invoices: 0,
+          total_due: '0.00',
+          last_invoice_date: null,
+        };
+        clientsMap.set(clientId, client);
+      }
+
+      client.pending_invoices += 1;
+      client.total_due = (Number.parseFloat(client.total_due) + amount).toFixed(2);
+      const last = client.last_invoice_date ? new Date(client.last_invoice_date) : null;
+      if (!last || invoiceDate > last) {
+        client.last_invoice_date = invoiceDate.toISOString().slice(0, 10);
+      }
+    }
+
+    return {
+      result: 'success',
+      summary: {
+        months,
+        window_start: start.toISOString().slice(0, 10),
+        window_end: end.toISOString().slice(0, 10),
+        clients_with_pending: clientsMap.size,
+        pending_invoices: totalInvoices,
+        total_due: totalDue.toFixed(2),
+      },
+      clients: Array.from(clientsMap.values()),
     };
   }
 }

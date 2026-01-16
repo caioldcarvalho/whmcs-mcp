@@ -773,6 +773,59 @@ export interface GetAllUnpaidInvoicesCompleteParams {
   offset?: number;
 }
 
+export interface FindInvoiceGapsParams {
+  months?: number;
+  only_monthly_active?: boolean;
+  include_statuses?: string[];
+  exclude_statuses?: string[];
+}
+
+export interface FindInvoiceGapsClient {
+  client_id: number;
+  name: string;
+  email: string;
+  phone: string;
+  missing_months: string[];
+  last_invoice_date: string | null;
+}
+
+export interface FindInvoiceGapsResult extends WHMCSBaseResponse {
+  summary: {
+    months: number;
+    window_start: string;
+    window_end: string;
+    clients_checked: number;
+    clients_with_gaps: number;
+  };
+  clients: FindInvoiceGapsClient[];
+}
+
+export interface ListClientsWithPendingInvoicesParams {
+  months?: number;
+}
+
+export interface PendingInvoiceClient {
+  client_id: number;
+  name: string;
+  email: string;
+  phone: string;
+  pending_invoices: number;
+  total_due: string;
+  last_invoice_date: string | null;
+}
+
+export interface ListClientsWithPendingInvoicesResult extends WHMCSBaseResponse {
+  summary: {
+    months: number;
+    window_start: string;
+    window_end: string;
+    clients_with_pending: number;
+    pending_invoices: number;
+    total_due: string;
+  };
+  clients: PendingInvoiceClient[];
+}
+
 // Module Command Types (Service Management)
 export interface ModuleCommandParams {
   serviceid: number;
