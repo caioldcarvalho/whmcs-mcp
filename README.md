@@ -31,7 +31,7 @@ WHMCS powers thousands of hosting companies but lacks modern AI integration. Thi
 
 ## 📝 License
 
-[Add license type]
+MIT
 
 ## 👤 Author
 
