@@ -3,13 +3,8 @@
     "whmcs": {
       "command": "node",
       "args": [
-        "/home/caio/workspace/whmcs-mcp/build/index.js"
-      ],
-      "env": {
-        "WHMCS_IDENTIFIER": "SEU_IDENTIFIER_AQUI",
-        "WHMCS_SECRET": "SEU_SECRET_AQUI",
-        "WHMCS_API_URL": "https://seu-whmcs.com/includes/api.php"
-      }
+        "/absolute/path/whmcs-mcp/build/index.js"
+      ]
     }
   }
 }
