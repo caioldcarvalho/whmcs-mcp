@@ -7,7 +7,7 @@ import {
   ListToolsRequestSchema,
   Tool,
 } from '@modelcontextprotocol/sdk/types.js';
-import dotenv from 'dotenv';
+import { loadWHMCSConfig } from './config.js';
 import { WHMCSClient } from './whmcs-client.js';
 import { z } from 'zod';
 import type {
@@ -43,26 +43,7 @@ import type {
   PendingOrderParams,
 } from './types.js';
 
-// Load environment variables
-dotenv.config();
-
-// Validate environment variables
-const WHMCS_IDENTIFIER = process.env.WHMCS_IDENTIFIER;
-const WHMCS_SECRET = process.env.WHMCS_SECRET;
-const WHMCS_API_URL = process.env.WHMCS_API_URL;
-
-if (!WHMCS_IDENTIFIER || !WHMCS_SECRET || !WHMCS_API_URL) {
-  throw new Error(
-    'Missing required environment variables: WHMCS_IDENTIFIER, WHMCS_SECRET, WHMCS_API_URL'
-  );
-}
-
-// Initialize WHMCS client
-const whmcsClient = new WHMCSClient({
-  identifier: WHMCS_IDENTIFIER,
-  secret: WHMCS_SECRET,
-  apiUrl: WHMCS_API_URL,
-});
+const whmcsClient = new WHMCSClient(loadWHMCSConfig());
 
 const ResponseFormatSchema = z.enum(['markdown', 'json']).default('markdown');
 type ResponseFormat = z.infer<typeof ResponseFormatSchema>;

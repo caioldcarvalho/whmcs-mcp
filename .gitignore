@@ -3,6 +3,7 @@ node_modules/
 
 # Environment variables
 .env
+mcp.json
 
 # Build output
 build/
