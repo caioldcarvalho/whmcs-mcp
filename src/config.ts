@@ -4,124 +4,125 @@ import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 import type { WHMCSConfig } from './types.js';
 
-const McpConfigSchema = z.object({
-  whmcs: z.object({
-    identifier: z
-      .string()
-      .trim()
-      .min(1, 'whmcs.identifier cannot be empty')
-      .optional(),
-    secret: z
-      .string()
-      .trim()
-      .min(1, 'whmcs.secret cannot be empty')
-      .optional(),
-    username: z
-      .string()
-      .trim()
-      .min(1, 'whmcs.username cannot be empty')
-      .optional(),
-    password: z
-      .string()
-      .min(1, 'whmcs.password cannot be empty')
-      .optional(),
-    apiUrl: z
-      .string({ required_error: 'whmcs.apiUrl is required' })
-      .trim()
-      .url('whmcs.apiUrl must be a valid URL'),
-  }).superRefine((whmcs, ctx) => {
-    const hasApiCredentials = Boolean(whmcs.identifier && whmcs.secret);
-    const hasAdminCredentials = Boolean(whmcs.username && whmcs.password);
+const WhmcsConfigSchema = z
+  .object({
+    identifier: z.string().trim().min(1).optional(),
+    secret: z.string().trim().min(1).optional(),
+    username: z.string().trim().min(1).optional(),
+    password: z.string().min(1).optional(),
+    apiUrl: z.string().trim().url('apiUrl must be a valid URL'),
+  })
+  .superRefine((cfg, ctx) => {
+    const hasApi = Boolean(cfg.identifier && cfg.secret);
+    const hasAdmin = Boolean(cfg.username && cfg.password);
 
-    if (!hasApiCredentials && !hasAdminCredentials) {
+    if (!hasApi && !hasAdmin) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message:
-          'Provide either whmcs.identifier and whmcs.secret, or whmcs.username and whmcs.password',
-        path: ['identifier'],
+          'Provide either identifier+secret or username+password',
       });
     }
-
-    if (Boolean(whmcs.identifier) !== Boolean(whmcs.secret)) {
+    if (Boolean(cfg.identifier) !== Boolean(cfg.secret)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'whmcs.identifier and whmcs.secret must be provided together',
-        path: ['identifier'],
+        message: 'identifier and secret must be provided together',
       });
     }
-
-    if (Boolean(whmcs.username) !== Boolean(whmcs.password)) {
+    if (Boolean(cfg.username) !== Boolean(cfg.password)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'whmcs.username and whmcs.password must be provided together',
-        path: ['username'],
+        message: 'username and password must be provided together',
       });
     }
-  }),
-});
+  });
 
-type McpConfig = z.infer<typeof McpConfigSchema>;
+const McpFileSchema = z.object({ whmcs: WhmcsConfigSchema });
+
+// --- env vars (standard MCP pattern) ---
+
+function loadFromEnv(): WHMCSConfig | undefined {
+  const apiUrl = process.env.WHMCS_API_URL;
+  if (!apiUrl) return undefined;
+
+  const identifier = process.env.WHMCS_IDENTIFIER;
+  const secret = process.env.WHMCS_SECRET;
+  const username = process.env.WHMCS_USERNAME;
+  const password = process.env.WHMCS_PASSWORD;
+
+  const raw = { apiUrl, identifier, secret, username, password };
+  const result = WhmcsConfigSchema.safeParse(raw);
+  if (!result.success) {
+    const messages = result.error.errors.map((e) => e.message).join('; ');
+    throw new Error(`Invalid WHMCS env vars: ${messages}`);
+  }
+  return result.data;
+}
+
+// --- mcp.json file ---
 
 function getCliConfigPath(args: string[]): string | undefined {
-  const configIndex = args.indexOf('--config');
-  if (configIndex === -1) {
-    return undefined;
-  }
-
-  const configPath = args[configIndex + 1];
-  if (!configPath || configPath.startsWith('--')) {
-    throw new Error('Missing value for --config. Usage: node build/index.js --config /path/to/mcp.json');
-  }
-
-  return configPath;
-}
-
-function getCandidateConfigPaths(args: string[]): string[] {
-  const cliConfigPath = getCliConfigPath(args);
-  if (cliConfigPath) {
-    return [isAbsolute(cliConfigPath) ? cliConfigPath : resolve(process.cwd(), cliConfigPath)];
-  }
-
-  const currentDirConfig = resolve(process.cwd(), 'mcp.json');
-  const sourceDir = dirname(fileURLToPath(import.meta.url));
-  const projectRootConfig = resolve(sourceDir, '..', 'mcp.json');
-
-  return [...new Set([currentDirConfig, projectRootConfig])];
-}
-
-function formatZodIssues(error: z.ZodError<McpConfig>): string {
-  return error.errors
-    .map((issue) => `${issue.path.join('.') || 'mcp.json'}: ${issue.message}`)
-    .join('; ');
-}
-
-export function loadWHMCSConfig(args = process.argv.slice(2)): WHMCSConfig {
-  const candidatePaths = getCandidateConfigPaths(args);
-  const configPath = candidatePaths.find((path) => existsSync(path));
-
-  if (!configPath) {
+  const idx = args.indexOf('--config');
+  if (idx === -1) return undefined;
+  const val = args[idx + 1];
+  if (!val || val.startsWith('--')) {
     throw new Error(
-      [
-        'mcp.json not found.',
-        `Looked in: ${candidatePaths.join(', ')}`,
-        'Create it from mcp.example.json and fill either API credentials or admin credentials plus whmcs.apiUrl.',
-        'You can also pass a custom path with --config /path/to/mcp.json.',
-      ].join(' ')
+      'Missing value for --config. Usage: node build/index.js --config /path/to/mcp.json',
+    );
+  }
+  return val;
+}
+
+function getCandidatePaths(args: string[]): string[] {
+  const cli = getCliConfigPath(args);
+  if (cli) {
+    return [isAbsolute(cli) ? cli : resolve(process.cwd(), cli)];
+  }
+  const cwd = resolve(process.cwd(), 'mcp.json');
+  const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'mcp.json');
+  return [...new Set([cwd, root])];
+}
+
+function loadFromFile(args: string[]): WHMCSConfig | undefined {
+  const candidates = getCandidatePaths(args);
+  const found = candidates.find((p) => existsSync(p));
+  if (!found) return undefined;
+
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(found, 'utf8'));
+  } catch (err) {
+    throw new Error(
+      `Invalid JSON in ${found}: ${err instanceof Error ? err.message : err}`,
     );
   }
 
-  let rawConfig: unknown;
-  try {
-    rawConfig = JSON.parse(readFileSync(configPath, 'utf8'));
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Invalid JSON in ${configPath}: ${message}`);
+  const result = McpFileSchema.safeParse(raw);
+  if (!result.success) {
+    const messages = result.error.errors
+      .map((e) => `${e.path.join('.')}: ${e.message}`)
+      .join('; ');
+    throw new Error(`Invalid config in ${found}: ${messages}`);
   }
+  return result.data.whmcs;
+}
 
-  const parsedConfig = McpConfigSchema.safeParse(rawConfig);
-  if (!parsedConfig.success) {
-    throw new Error(`Invalid configuration in ${configPath}: ${formatZodIssues(parsedConfig.error)}`);
-  }
+// --- public API ---
 
-  return parsedConfig.data.whmcs;
+export function loadWHMCSConfig(args = process.argv.slice(2)): WHMCSConfig {
+  // 1. env vars (standard MCP "env" block)
+  const fromEnv = loadFromEnv();
+  if (fromEnv) return fromEnv;
+
+  // 2. mcp.json file (--config or default locations)
+  const fromFile = loadFromFile(args);
+  if (fromFile) return fromFile;
+
+  throw new Error(
+    [
+      'No WHMCS credentials found.',
+      'Set WHMCS_API_URL + WHMCS_IDENTIFIER/WHMCS_SECRET (or WHMCS_USERNAME/WHMCS_PASSWORD) as env vars,',
+      'or create a mcp.json file (see mcp.example.json).',
+    ].join(' '),
+  );
 }

@@ -1,11 +1,15 @@
 {
-  "name": "whmcs-mcp-server",
-  "version": "0.1.0",
-  "description": "MCP server for WHMCS API integration",
+  "name": "whmcs-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for WHMCS API integration — 34 tools for tickets, clients, invoices, orders, and more",
   "type": "module",
   "bin": {
-    "whmcs-mcp-server": "./build/index.js"
+    "whmcs-mcp": "./build/index.js"
   },
+  "files": [
+    "build",
+    "mcp.example.json"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
@@ -15,9 +19,29 @@
   "keywords": [
     "mcp",
     "whmcs",
-    "api",
-    "tickets"
+    "model-context-protocol",
+    "ai",
+    "hosting",
+    "billing",
+    "whmcs-api",
+    "mcp-server",
+    "claude",
+    "tickets",
+    "invoices"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/caioldcarvalho/whmcs-mcp.git"
+  },
+  "homepage": "https://github.com/caioldcarvalho/whmcs-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/caioldcarvalho/whmcs-mcp/issues"
+  },
+  "license": "MIT",
+  "author": "Caio Carvalho",
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
     "axios": "^1.7.9",
