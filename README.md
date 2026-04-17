@@ -141,6 +141,24 @@ cp mcp.example.json mcp.json
 
 When using admin credentials with `username`/`password`, the server automatically hashes the password with MD5 (WHMCS requirement). You can also provide an already MD5-hashed password.
 
+### Adding credentials later
+
+If you already added the MCP server but didn't have the credentials yet:
+
+**Claude Code:** run `claude mcp add whmcs ...` again with the `-e` flags -- it overwrites the previous entry.
+
+**Claude Desktop:** open `claude_desktop_config.json` and add the `env` block to the existing `whmcs` entry:
+
+```json
+"env": {
+  "WHMCS_API_URL": "https://your-whmcs.com/includes/api.php",
+  "WHMCS_IDENTIFIER": "your_identifier",
+  "WHMCS_SECRET": "your_secret"
+}
+```
+
+Then restart Claude Desktop.
+
 ## Usage Examples
 
 In Claude Code, you can ask questions like:
