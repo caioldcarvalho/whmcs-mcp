@@ -75,18 +75,23 @@ echo "🔨 Compilando..."
 npm run build
 
 # Criar arquivo de configuração das credenciais
-ENV_FILE="$INSTALL_DIR/.env"
-if [ ! -f "$ENV_FILE" ]; then
+MCP_CONFIG_FILE="$INSTALL_DIR/mcp.json"
+if [ ! -f "$MCP_CONFIG_FILE" ]; then
     echo "⚙️  Criando arquivo de configuração..."
-    cp .env.example .env
+    cp mcp.example.json mcp.json
     echo
     echo "🔐 CONFIGURE SUAS CREDENCIAIS WHMCS:"
-    echo "    Arquivo: $ENV_FILE"
+    echo "    Arquivo: $MCP_CONFIG_FILE"
     echo
-    echo "    Edite e configure:"
-    echo "    - WHMCS_IDENTIFIER=seu_identifier_aqui"
-    echo "    - WHMCS_SECRET=seu_secret_aqui" 
-    echo "    - WHMCS_API_URL=https://seu-whmcs.com/includes/api.php"
+    echo "    Com credenciais API:"
+    echo "    - whmcs.identifier: seu_identifier_aqui"
+    echo "    - whmcs.secret: seu_secret_aqui"
+    echo "    - whmcs.apiUrl: https://seu-whmcs.com/includes/api.php"
+    echo
+    echo "    Ou com credenciais admin:"
+    echo "    - whmcs.username: seu_usuario_admin"
+    echo "    - whmcs.password: sua_senha_admin"
+    echo "    - whmcs.apiUrl: https://seu-whmcs.com/includes/api.php"
     echo
 fi
 
@@ -142,7 +147,7 @@ echo "✅ WHMCS MCP Server instalado com sucesso!"
 echo
 echo "📋 PRÓXIMOS PASSOS:"
 echo "1. Configure suas credenciais WHMCS:"
-echo "   📝 Editar: $ENV_FILE"
+echo "   📝 Editar: $MCP_CONFIG_FILE"
 echo
 echo "2. Reinicie o Claude Desktop"
 echo
@@ -150,12 +155,12 @@ echo "3. Teste os comandos MCP:"
 echo "   • whmcs_get_tickets"
 echo "   • whmcs_get_clients"
 echo "   • whmcs_get_stats"
-echo "   • E mais 18 ferramentas disponíveis!"
+echo "   • E mais 31 ferramentas disponíveis! (34 no total)"
 echo
 echo "🔧 Configuração salva em: $CONFIG_FILE"
 echo "📁 Instalação em: $INSTALL_DIR"
 echo
 echo "🆘 Problemas? Verifique:"
-echo "   • Credenciais no arquivo .env"
+echo "   • Credenciais no arquivo mcp.json"
 echo "   • Reinicie o Claude Desktop"
 echo "   • Logs em: $INSTALL_DIR"

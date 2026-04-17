@@ -1,0 +1,7 @@
+{
+  "whmcs": {
+    "identifier": "SEU_IDENTIFIER_AQUI",
+    "secret": "SEU_SECRET_AQUI",
+    "apiUrl": "https://seu-whmcs.com/includes/api.php"
+  }
+}

@@ -1,8 +1,10 @@
 // Types for WHMCS API
 
 export interface WHMCSConfig {
-  identifier: string;
-  secret: string;
+  identifier?: string;
+  secret?: string;
+  username?: string;
+  password?: string;
   apiUrl: string;
 }
 

@@ -93,8 +93,37 @@ npm install
 # Build
 npm run build
 
-# Configure .env with your credentials
+# Create and edit your local WHMCS credentials
+cp mcp.example.json mcp.json
 ```
+
+Edit `mcp.json`:
+
+With WHMCS API credentials:
+
+```json
+{
+  "whmcs": {
+    "identifier": "your_identifier",
+    "secret": "your_secret",
+    "apiUrl": "https://your-whmcs.com/includes/api.php"
+  }
+}
+```
+
+Or with WHMCS admin credentials:
+
+```json
+{
+  "whmcs": {
+    "username": "your_admin_username",
+    "password": "your_admin_password",
+    "apiUrl": "https://your-whmcs.com/includes/api.php"
+  }
+}
+```
+
+When `username` and `password` are used, the server sends the WHMCS-compatible MD5 password value to the API. You can also provide an already MD5-hashed password.
 
 ## Claude Code Configuration
 
@@ -113,26 +142,11 @@ Or configure manually in `~/.config/Claude/config.json`:
   "mcpServers": {
     "whmcs": {
       "command": "node",
-      "args": ["/absolute/path/whmcs-mcp/build/index.js"],
-      "env": {
-        "WHMCS_IDENTIFIER": "your_identifier",
-        "WHMCS_SECRET": "your_secret",
-        "WHMCS_API_URL": "https://your-whmcs.com/includes/api.php"
-      }
+      "args": ["/absolute/path/whmcs-mcp/build/index.js"]
     }
   }
 }
 ```
-
-## Documentation
-
-- [📋 Roadmap](.docs/ROADMAP.md) - Development plan
-- [📚 API Reference](.docs/API_REFERENCE.md) - Full WHMCS API documentation
-- [📝 API Functions](.docs/API_FUNCTIONS.md) - List of implemented GET functions
-- [⚙️ Installation](.docs/INSTALACAO.md) - Detailed installation guide
-- [🔧 Troubleshooting](.docs/TROUBLESHOOTING.md) - Troubleshooting guide
-- [🤔 How It Works](.docs/COMO_FUNCIONA.md) - Architecture explanation
-- [✅ Evaluation](.docs/evaluation.xml) - Evaluation question set
 
 ## Usage Examples
 
@@ -168,19 +182,14 @@ In Claude Code, you can ask questions like:
 
 ```
 whmcs-mcp/
-├── .docs/              # Full documentation
-│   ├── ROADMAP.md
-│   ├── API_REFERENCE.md
-│   ├── API_FUNCTIONS.md
-│   ├── INSTALACAO.md
-│   ├── TROUBLESHOOTING.md
-│   └── COMO_FUNCIONA.md
 ├── src/                # TypeScript source code
 │   ├── index.ts        # MCP server (34 tools)
+│   ├── config.ts       # mcp.json loader
 │   ├── whmcs-client.ts # API client (34 methods)
 │   └── types.ts        # TypeScript types
 ├── build/              # Compiled output
-├── .env                # Configuration
+├── mcp.example.json    # Configuration template
+├── mcp.json            # Local credentials (ignored by git)
 └── package.json
 ```
 
@@ -192,6 +201,12 @@ npm run dev
 
 # Manual build
 npm run build
+
+# Run the MCP server with the default mcp.json
+node build/index.js
+
+# Run with a custom config path
+node build/index.js --config /absolute/path/mcp.json
 
 # Test client directly
 node -e "import('./build/whmcs-client.js').then(async ({WHMCSClient}) => { ... })"
@@ -208,7 +223,6 @@ node -e "import('./build/whmcs-client.js').then(async ({WHMCSClient}) => { ... }
 
 - ✅ **34 MCP tools implemented and tested**
 - ✅ Complete TypeScript client
-- ✅ Complete documentation
 - ✅ Tested in production with real data
 - ✅ Full coverage of main WHMCS endpoints
 
@@ -244,19 +258,6 @@ node -e "import('./build/whmcs-client.js').then(async ({WHMCSClient}) => { ... }
 
 ### ✅ Order Management (4 tools)
 - AcceptOrder, CancelOrder, DeleteOrder, PendingOrder
-
-## Next Suggested Implementations
-
-See [API_FUNCTIONS.md](.docs/API_FUNCTIONS.md) for the full list of available functions.
-
-### Additional GET Functions
-- GetTicketNotes, GetTicketAttachment
-- GetAnnouncements, GetPromotions
-- GetServers, GetProjects
-
-### Action Functions
-- AddTicketNote, DeleteTicket, MergeTicket
-- ModuleSuspend, ModuleUnsuspend, ModuleTerminate
 
 ## License
 

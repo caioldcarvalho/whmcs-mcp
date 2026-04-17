@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import axios, { AxiosInstance } from 'axios';
 import type {
   WHMCSConfig,
@@ -69,12 +70,10 @@ import type {
 
 export class WHMCSClient {
   private client: AxiosInstance;
-  private identifier: string;
-  private secret: string;
+  private authParams: Record<string, string>;
 
   constructor(config: WHMCSConfig) {
-    this.identifier = config.identifier;
-    this.secret = config.secret;
+    this.authParams = this.getAuthParams(config);
 
     this.client = axios.create({
       baseURL: config.apiUrl,
@@ -82,6 +81,32 @@ export class WHMCSClient {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
     });
+  }
+
+  private getAuthParams(config: WHMCSConfig): Record<string, string> {
+    if (config.identifier && config.secret) {
+      return {
+        identifier: config.identifier,
+        secret: config.secret,
+      };
+    }
+
+    if (config.username && config.password) {
+      return {
+        username: config.username,
+        password: this.toWhmcsPasswordHash(config.password),
+      };
+    }
+
+    throw new Error('WHMCS credentials are missing');
+  }
+
+  private toWhmcsPasswordHash(password: string): string {
+    if (/^[a-f0-9]{32}$/i.test(password)) {
+      return password;
+    }
+
+    return createHash('md5').update(password).digest('hex');
   }
 
   private parseDate(dateValue: string | undefined): Date | null {
@@ -192,8 +217,7 @@ export class WHMCSClient {
     try {
       const requestParams = new URLSearchParams({
         action,
-        identifier: this.identifier,
-        secret: this.secret,
+        ...this.authParams,
         responsetype: 'json',
         ...this.serializeParams(params),
       });
