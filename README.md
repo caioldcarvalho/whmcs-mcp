@@ -86,66 +86,60 @@ MCP (Model Context Protocol) server for full integration with the WHMCS API.
 
 ## Quick Install
 
-```bash
-# Install dependencies
-npm install
-
-# Build
-npm run build
-
-# Create and edit your local WHMCS credentials
-cp mcp.example.json mcp.json
-```
-
-Edit `mcp.json`:
-
-With WHMCS API credentials:
-
-```json
-{
-  "whmcs": {
-    "identifier": "your_identifier",
-    "secret": "your_secret",
-    "apiUrl": "https://your-whmcs.com/includes/api.php"
-  }
-}
-```
-
-Or with WHMCS admin credentials:
-
-```json
-{
-  "whmcs": {
-    "username": "your_admin_username",
-    "password": "your_admin_password",
-    "apiUrl": "https://your-whmcs.com/includes/api.php"
-  }
-}
-```
-
-When `username` and `password` are used, the server sends the WHMCS-compatible MD5 password value to the API. You can also provide an already MD5-hashed password.
-
-## Claude Code Configuration
+### Claude Code (one command)
 
 ```bash
-# Add MCP to Claude Code
-claude mcp add --transport stdio whmcs -- node /absolute/path/whmcs-mcp/build/index.js
-
-# Verify
-claude mcp list
+claude mcp add whmcs \
+  -e WHMCS_API_URL=https://your-whmcs.com/includes/api.php \
+  -e WHMCS_IDENTIFIER=your_identifier \
+  -e WHMCS_SECRET=your_secret \
+  -- npx -y whmcs-mcp
 ```
 
-Or configure manually in `~/.config/Claude/config.json`:
+Or with admin credentials instead of API keys:
+
+```bash
+claude mcp add whmcs \
+  -e WHMCS_API_URL=https://your-whmcs.com/includes/api.php \
+  -e WHMCS_USERNAME=your_admin_user \
+  -e WHMCS_PASSWORD=your_admin_password \
+  -- npx -y whmcs-mcp
+```
+
+That's it. Run `claude mcp list` to verify.
+
+### Claude Desktop
+
+Add to your `claude_desktop_config.json` ([location by OS](https://modelcontextprotocol.io/quickstart/user)):
 
 ```json
 {
   "mcpServers": {
     "whmcs": {
-      "command": "node",
-      "args": ["/absolute/path/whmcs-mcp/build/index.js"]
+      "command": "npx",
+      "args": ["-y", "whmcs-mcp"],
+      "env": {
+        "WHMCS_API_URL": "https://your-whmcs.com/includes/api.php",
+        "WHMCS_IDENTIFIER": "your_identifier",
+        "WHMCS_SECRET": "your_secret"
+      }
     }
   }
 }
+```
+
+Restart Claude Desktop and the 34 tools will be available.
+
+### Alternative: mcp.json file
+
+If you prefer a config file instead of env vars, create `mcp.json` in the project root:
+
+```bash
+cp mcp.example.json mcp.json
+# edit mcp.json with your credentials
+```
+
+When using admin credentials with `username`/`password`, the server automatically hashes the password with MD5 (WHMCS requirement). You can also provide an already MD5-hashed password.
 ```
 
 ## Usage Examples
@@ -184,12 +178,12 @@ In Claude Code, you can ask questions like:
 whmcs-mcp/
 ├── src/                # TypeScript source code
 │   ├── index.ts        # MCP server (34 tools)
-│   ├── config.ts       # mcp.json loader
+│   ├── config.ts       # Config loader (env vars → mcp.json)
 │   ├── whmcs-client.ts # API client (34 methods)
 │   └── types.ts        # TypeScript types
+├── test/               # Unit tests
 ├── build/              # Compiled output
-├── mcp.example.json    # Configuration template
-├── mcp.json            # Local credentials (ignored by git)
+├── mcp.example.json    # Config file template (optional)
 └── package.json
 ```
 
