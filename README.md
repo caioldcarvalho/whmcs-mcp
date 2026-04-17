@@ -5,30 +5,30 @@ MCP (Model Context Protocol) server for full integration with the WHMCS API.
 ## Features
 
 ### Tickets and Support
-- ✅ List tickets with advanced filters
-- ✅ View full ticket details (including replies and notes)
-- ✅ Create new tickets
-- ✅ Add replies to tickets
-- ✅ Update ticket properties
-- ✅ List support departments
-- ✅ View ticket statuses with counts
-- ✅ Full ticket statistics
+- List tickets with advanced filters
+- View full ticket details (including replies and notes)
+- Create new tickets
+- Add replies to tickets
+- Update ticket properties
+- List support departments
+- View ticket statuses with counts
+- Full ticket statistics
 
 ### Clients
-- ✅ List clients with filters and pagination
-- ✅ View full client details (with stats)
+- List clients with filters and pagination
+- View full client details (with stats)
 
 ### Products and Orders
-- ✅ List available products/services
-- ✅ List orders with filters
+- List available products/services
+- List orders with filters
 
 ### Invoices
-- ✅ List invoices with filters and sorting
+- List invoices with filters and sorting
 
 ### General
-- 🔒 Secure authentication via API credentials
-- 📝 Fully typed with TypeScript
-- 🚀 34 MCP tools implemented and tested
+- Secure authentication via API credentials
+- Fully typed with TypeScript
+- 34 MCP tools implemented and tested
 
 ## Available Tools (34)
 
@@ -140,7 +140,6 @@ cp mcp.example.json mcp.json
 ```
 
 When using admin credentials with `username`/`password`, the server automatically hashes the password with MD5 (WHMCS requirement). You can also provide an already MD5-hashed password.
-```
 
 ## Usage Examples
 
@@ -215,42 +214,42 @@ node -e "import('./build/whmcs-client.js').then(async ({WHMCSClient}) => { ... }
 
 ## Project Status
 
-- ✅ **34 MCP tools implemented and tested**
-- ✅ Complete TypeScript client
-- ✅ Tested in production with real data
-- ✅ Full coverage of main WHMCS endpoints
+- **34 MCP tools implemented and tested**
+- Complete TypeScript client
+- Tested in production with real data
+- Full coverage of main WHMCS endpoints
 
 ## Completed Implementations
 
-### ✅ Tickets and Support (8 tools)
+### Tickets and Support (8 tools)
 - GetTickets, GetTicket, GetTicketCounts
 - OpenTicket, AddTicketReply, UpdateTicket
 - GetSupportDepartments, GetSupportStatuses
 
-### ✅ Clients (6 tools)
+### Clients (6 tools)
 - GetClients, GetClientsDetails
 - GetClientsProducts, GetClientsDomains
 - GetContacts, GetEmails
 
-### ✅ Products and Sales (3 tools)
+### Products and Sales (3 tools)
 - GetProducts, GetOrders, GetInvoices
 
-### ✅ System and Admin (5 tools)
+### System and Admin (5 tools)
 - GetActivityLog (116k+ entries tested)
 - GetStats (revenue, orders, tickets)
 - GetCurrencies, GetPaymentMethods
 - GetAdminUsers
 
-### ✅ Combined Invoices (2 tools)
+### Combined Invoices (2 tools)
 - GetUnpaidInvoicesDetailed, GetAllUnpaidInvoicesComplete
 
-### ✅ Billing Analysis (2 tools)
+### Billing Analysis (2 tools)
 - FindInvoiceGaps, ListClientsWithPendingInvoices
 
-### ✅ Service Management (4 tools)
+### Service Management (4 tools)
 - ModuleSuspend, ModuleUnsuspend, ModuleTerminate, ModuleCreate
 
-### ✅ Order Management (4 tools)
+### Order Management (4 tools)
 - AcceptOrder, CancelOrder, DeleteOrder, PendingOrder
 
 ## License
