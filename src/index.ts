@@ -1380,6 +1380,20 @@ const rawTools: Tool[] = [
       openWorldHint: true,
     },
   },
+  {
+    name: 'whmcs_check_connection',
+    description:
+      'Check if the WHMCS API connection is working and the current IP is whitelisted. ' +
+      'If the IP is not whitelisted, it will be shown in the error message so you can add it to the whitelist.',
+    inputSchema: { type: 'object', properties: {} },
+    annotations: {
+      title: 'Check API Connection',
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+  },
 ];
 
 const tools: Tool[] = rawTools.map((tool) => ({
@@ -2042,6 +2056,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const { response_format: responseFormat = 'markdown', ...params } = parseToolArgs(pendingOrderSchema, args);
         const result = await whmcsClient.pendingOrder(params as PendingOrderParams);
         return formatToolResponse(name, toolTitle, responseFormat, { data: result });
+      }
+
+      case 'whmcs_check_connection': {
+        const result = await whmcsClient.checkConnection();
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Connected to WHMCS ${result.whmcsVersion}. IP is whitelisted.`,
+            },
+          ],
+        };
       }
 
       default:

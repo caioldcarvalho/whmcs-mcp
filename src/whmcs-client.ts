@@ -231,7 +231,11 @@ export class WHMCSClient {
       return response.data as T;
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        throw new Error(`WHMCS API request failed: ${error.message}`);
+        const body = error.response?.data;
+        const detail = typeof body === 'string' ? body : body?.message;
+        throw new Error(
+          `WHMCS API request failed: ${error.message}${detail ? ` — ${detail}` : ''}`
+        );
       }
       throw error;
     }
@@ -247,6 +251,27 @@ export class WHMCSClient {
     }
 
     return serialized;
+  }
+
+  // Connection check
+
+  async checkConnection(): Promise<{ whmcsVersion: string }> {
+    try {
+      const result = await this.request<{ whmcs_version: string }>('WhmcsDetails');
+      return { whmcsVersion: result.whmcs_version };
+    } catch (error) {
+      if (error instanceof Error) {
+        // Extract IP from WHMCS error messages like "Invalid IP 1.2.3.4"
+        const ipMatch = error.message.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/);
+        if (ipMatch) {
+          throw new Error(
+            `Your IP ${ipMatch[1]} is not whitelisted in WHMCS API Security settings. ` +
+            `Add it at Configuration > System Settings > API Credentials > IP Whitelist.`
+          );
+        }
+      }
+      throw error;
+    }
   }
 
   // Ticket Methods
