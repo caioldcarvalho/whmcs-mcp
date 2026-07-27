@@ -19,7 +19,8 @@ MCP (Model Context Protocol) server for full integration with the WHMCS API.
 - View full client details (with stats)
 
 ### Products and Orders
-- List available products/services
+- List available products/services, with pay type and the price of every enabled billing cycle
+- List client services with billing cycle, recurring amount, and next due date
 - List orders with filters
 
 ### Invoices
@@ -29,6 +30,21 @@ MCP (Model Context Protocol) server for full integration with the WHMCS API.
 - Secure authentication via API credentials
 - Fully typed with TypeScript
 - 34 MCP tools implemented and tested
+- Automatic XML retry when WHMCS cannot encode a JSON response (see below)
+
+### WHMCS JSON encoder workaround
+
+Some installations hold records with bytes that are not valid UTF-8. WHMCS then
+answers any call touching those records with:
+
+```
+Error generating JSON encoded response: Malformed UTF-8 characters, possibly incorrectly encoded
+```
+
+This makes endpoints like `GetClientsProducts` permanently unusable. WHMCS has
+no such problem serving XML, so this server retries the same call as XML and
+parses it into the same shape — the tool succeeds and the caller sees no
+difference.
 
 ## Available Tools (34)
 
@@ -47,13 +63,13 @@ MCP (Model Context Protocol) server for full integration with the WHMCS API.
 ### Clients
 9. **whmcs_get_clients** - List clients
 10. **whmcs_get_clients_details** - Full client details
-11. **whmcs_get_clients_products** - Client products/services
+11. **whmcs_get_clients_products** - Client products/services with billing cycle, recurring amount, and next due date
 12. **whmcs_get_clients_domains** - Client domains
 13. **whmcs_get_contacts** - Client contacts
 14. **whmcs_get_emails** - Email history
 
 ### Products, Orders, and Invoices
-15. **whmcs_get_products** - List products/services
+15. **whmcs_get_products** - List products/services with pay type and per-cycle pricing
 16. **whmcs_get_orders** - List orders
 17. **whmcs_get_invoices** - List invoices
 
@@ -177,6 +193,13 @@ In Claude Code, you can ask questions like:
 **Products:**
 - "List all available products"
 - "Which products are in group 5?"
+- "How much does product 42 cost per month and per year?"
+- "Which services of client 123 renew monthly, and for how much?"
+
+Responses are markdown tables by default, with every field also available in
+`structuredContent`. Ask for `response_format: "json"` when you need those
+fields inline, and `include_full_details: true` on `whmcs_get_products` when you
+need the description HTML, config options, and custom fields.
 
 **Orders and Invoices:**
 - "List the last 10 orders"
@@ -197,6 +220,8 @@ whmcs-mcp/
 │   ├── index.ts        # MCP server (34 tools)
 │   ├── config.ts       # Config loader (env vars → mcp.json)
 │   ├── whmcs-client.ts # API client (34 methods)
+│   ├── products.ts     # Product pricing formatting and payload slimming
+│   ├── xml.ts          # XML fallback parser for the WHMCS JSON encoder bug
 │   └── types.ts        # TypeScript types
 ├── test/               # Unit tests
 ├── build/              # Compiled output
