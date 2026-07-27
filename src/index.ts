@@ -9,6 +9,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { loadWHMCSConfig } from './config.js';
 import { WHMCSClient } from './whmcs-client.js';
+import { formatProductPricing, slimProducts } from './products.js';
 import { z } from 'zod';
 import type {
   GetTicketsParams,
@@ -164,10 +165,12 @@ function renderMarkdown(toolName: string, title: string, output: ToolOutput): st
   }
 
   const data = output.data as Record<string, unknown> | undefined;
+  let renderedTable = false;
   const addTable = (headers: string[], rows: string[][]) => {
     if (!rows.length) {
       return;
     }
+    renderedTable = true;
     lines.push('');
     lines.push(`| ${headers.join(' | ')} |`);
     lines.push(`| ${headers.map(() => '---').join(' | ')} |`);
@@ -235,11 +238,42 @@ function renderMarkdown(toolName: string, title: string, output: ToolOutput): st
       const products = getArray(['products', 'product']) ?? [];
       const rows = products.map((product) => [
         String(product.pid ?? ''),
-        String(product.name ?? ''),
+        String(product.name ?? '').trim(),
         String(product.type ?? ''),
+        String(product.paytype ?? ''),
         String(product.module ?? ''),
+        formatProductPricing(product.pricing),
       ]);
-      addTable(['ID', 'Name', 'Type', 'Module'], rows);
+      addTable(['ID', 'Name', 'Type', 'Pay Type', 'Module', 'Pricing'], rows);
+      break;
+    }
+    case 'whmcs_get_clients_products': {
+      const products = getArray(['products', 'product']) ?? [];
+      const rows = products.map((product) => [
+        String(product.id ?? ''),
+        String(product.clientid ?? ''),
+        String(product.name ?? '').trim(),
+        String(product.domain ?? ''),
+        String(product.billingcycle ?? ''),
+        String(product.recurringamount ?? ''),
+        String(product.firstpaymentamount ?? ''),
+        String(product.nextduedate ?? ''),
+        String(product.status ?? ''),
+      ]);
+      addTable(
+        [
+          'Service ID',
+          'Client ID',
+          'Product',
+          'Domain',
+          'Billing Cycle',
+          'Recurring',
+          'First Payment',
+          'Next Due',
+          'Status',
+        ],
+        rows
+      );
       break;
     }
     case 'whmcs_get_orders': {
@@ -365,11 +399,22 @@ function renderMarkdown(toolName: string, title: string, output: ToolOutput): st
   if (lines.length === 1) {
     lines.push('');
   }
-  if (!lines.includes('```json')) {
+
+  // The table is the readable view; repeating the payload as JSON below it can
+  // triple the response for no gain (the full product catalogue reached 270 KB
+  // that way). Callers that need every field have `structuredContent` on the
+  // same response, or can ask for response_format: "json". Tools with no table
+  // of their own still fall back to the JSON dump.
+  if (!renderedTable) {
     lines.push('');
     lines.push('```json');
     lines.push(JSON.stringify(output, null, 2));
     lines.push('```');
+  } else {
+    lines.push('');
+    lines.push(
+      '_Every field is in `structuredContent`; call again with `response_format: "json"` to see them inline._'
+    );
   }
 
   return lines.join('\n');
@@ -772,7 +817,8 @@ const rawTools: Tool[] = [
   // Product Tools
   {
     name: 'whmcs_get_products',
-    description: 'List products/services available in WHMCS.',
+    description:
+      'List products/services available in WHMCS, including pay type and the price of every enabled billing cycle.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -787,6 +833,11 @@ const rawTools: Tool[] = [
         module: {
           type: 'string',
           description: 'Filter by module name',
+        },
+        include_full_details: {
+          type: 'boolean',
+          description:
+            'Include the product description HTML, config options and custom fields. Off by default because the full catalogue runs to hundreds of KB; pricing is always returned.',
         },
       },
     },
@@ -1524,6 +1575,7 @@ const getProductsSchema = withResponseFormat({
   pid: z.union([zPositiveInt, z.string().min(1)]).optional(),
   gid: zPositiveInt.optional(),
   module: z.string().min(1).optional(),
+  include_full_details: z.boolean().optional(),
 });
 
 const getOrdersSchema = withResponseFormat({
@@ -1785,7 +1837,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // Product Tools
       case 'whmcs_get_products': {
-        const { response_format: responseFormat = 'markdown', ...params } = parseToolArgs(getProductsSchema, args);
+        const {
+          response_format: responseFormat = 'markdown',
+          include_full_details: includeFullDetails = false,
+          ...params
+        } = parseToolArgs(getProductsSchema, args);
         const result = await whmcsClient.getProducts(params as GetProductsParams);
         const count = Number(result.numreturned || result.products?.product?.length || 0);
         const offset = Number(result.startnumber ?? 0);
@@ -1795,7 +1851,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           name,
           toolTitle,
           responseFormat,
-          wrapData(result, pagination)
+          wrapData(slimProducts(result, includeFullDetails), pagination)
         );
       }
 
