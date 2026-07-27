@@ -143,3 +143,71 @@ test('WHMCSClient throws the WHMCS error message from mocked API responses', asy
     /Authentication failed/
   );
 });
+
+test('WHMCSClient retries in XML when the WHMCS JSON encoder fails', async () => {
+  const calls = mockAxiosPost(async (url, body) => {
+    const params = new URLSearchParams(body);
+    if (params.get('responsetype') === 'json') {
+      return {
+        data: {
+          result: 'error',
+          message: 'Error generating JSON encoded response: Malformed UTF-8 characters, possibly incorrectly encoded',
+        },
+      };
+    }
+
+    return {
+      data: `<?xml version="1.0" encoding="utf-8"?>
+<whmcsapi version="8.13.1">
+<result>success</result>
+<totalresults>1</totalresults>
+<startnumber>0</startnumber>
+<numreturned>1</numreturned>
+<products>
+<product>
+<id>42</id>
+<name>Hosting</name>
+<billingcycle>Monthly</billingcycle>
+<recurringamount>49.90</recurringamount>
+<nextduedate>2026-08-01</nextduedate>
+<status>Active</status>
+</product>
+</products>
+</whmcsapi>`,
+    };
+  });
+
+  const response = await createClient().getClientsProducts({ limitnum: 1 });
+
+  assert.equal(calls.length, 2);
+  assert.equal(new URLSearchParams(calls[0].body).get('responsetype'), 'json');
+  assert.equal(new URLSearchParams(calls[1].body).get('responsetype'), 'xml');
+  assert.equal(new URLSearchParams(calls[1].body).get('limitnum'), '1');
+  assert.equal(response.result, 'success');
+  assert.equal(response.products.product.length, 1);
+  assert.equal(response.products.product[0].recurringamount, '49.90');
+  assert.equal(response.products.product[0].billingcycle, 'Monthly');
+});
+
+test('WHMCSClient surfaces a real API error from the XML retry', async () => {
+  mockAxiosPost(async (url, body) => {
+    const params = new URLSearchParams(body);
+    if (params.get('responsetype') === 'json') {
+      return { data: { result: 'error', message: 'Malformed UTF-8 characters' } };
+    }
+    return {
+      data: '<whmcsapi><result>error</result><message>Invalid IP 1.2.3.4</message></whmcsapi>',
+    };
+  });
+
+  await assert.rejects(() => createClient().getClientsProducts(), /Invalid IP 1\.2\.3\.4/);
+});
+
+test('WHMCSClient does not retry in XML for ordinary API errors', async () => {
+  const calls = mockAxiosPost(async () => ({
+    data: { result: 'error', message: 'Authentication failed' },
+  }));
+
+  await assert.rejects(() => createClient().getClientsProducts(), /Authentication failed/);
+  assert.equal(calls.length, 1);
+});
