@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import axios, { AxiosInstance } from 'axios';
+import { isJsonEncodingError, parseWhmcsXml } from './xml.js';
 import type {
   WHMCSConfig,
   GetTicketsParams,
@@ -215,16 +216,15 @@ export class WHMCSClient {
 
   private async request<T>(action: string, params: Record<string, any> = {}): Promise<T> {
     try {
-      const requestParams = new URLSearchParams({
-        action,
-        ...this.authParams,
-        responsetype: 'json',
-        ...this.serializeParams(params),
-      });
-
-      const response = await this.client.post('', requestParams.toString());
+      const response = await this.post(action, params, 'json');
 
       if (response.data.result === 'error') {
+        // WHMCS fails to encode JSON when a record holds non-UTF-8 bytes, which
+        // makes calls like GetClientsProducts permanently unusable. XML has no
+        // such encoder, so retry there and parse it into the same shape.
+        if (isJsonEncodingError(response.data.message)) {
+          return await this.requestAsXml<T>(action, params);
+        }
         throw new Error(response.data.message || 'WHMCS API error');
       }
 
@@ -239,6 +239,29 @@ export class WHMCSClient {
       }
       throw error;
     }
+  }
+
+  private post(action: string, params: Record<string, any>, responseType: 'json' | 'xml') {
+    const requestParams = new URLSearchParams({
+      action,
+      ...this.authParams,
+      responsetype: responseType,
+      ...this.serializeParams(params),
+    });
+
+    return this.client.post('', requestParams.toString());
+  }
+
+  private async requestAsXml<T>(action: string, params: Record<string, any>): Promise<T> {
+    const response = await this.post(action, params, 'xml');
+    const body = typeof response.data === 'string' ? response.data : String(response.data ?? '');
+    const parsed = parseWhmcsXml(body);
+
+    if (parsed.result === 'error') {
+      throw new Error(typeof parsed.message === 'string' ? parsed.message : 'WHMCS API error');
+    }
+
+    return parsed as T;
   }
 
   private serializeParams(params: Record<string, any>): Record<string, string> {
